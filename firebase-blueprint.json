@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "Store customer's loyalty points and contact info.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "loyaltyPoints": { "type": "number" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "phoneNumber", "loyaltyPoints"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Store order details, status, and tracking info.",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "menuItemId": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "number" },
+              "customizations": { "type": "string" }
+            }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Order Received", "Preparing", "Out for Delivery", "Delivered", "Ready for Pickup"]
+        },
+        "total": { "type": "number" },
+        "isDelivery": { "type": "boolean" },
+        "deliveryAddress": { "type": "string" },
+        "estimatedDeliveryTime": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["customerName", "items", "status", "total", "createdAt"]
+    },
+    "MenuItem": {
+      "title": "Menu Item",
+      "description": "Store individual menu items including prices and specials.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "subcategory": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "isSpecial": { "type": "boolean" },
+        "highlightColor": { "type": "string" },
+        "sortOrder": { "type": "number" }
+      },
+      "required": ["name", "price", "category"]
+    }
+  },
+  "firestore": {
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Collection of cafe customers."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of food orders."
+    },
+    "/menu/{itemId}": {
+      "schema": "MenuItem",
+      "description": "Collection of available menu items."
+    }
+  }
+}
