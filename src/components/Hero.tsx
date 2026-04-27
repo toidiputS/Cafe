@@ -1,127 +1,135 @@
-import { BadgeCheck, CreditCard, Clock, Truck, ChevronRight } from "lucide-react";
-import { motion } from "motion/react";
+import { BadgeCheck, CreditCard, Clock, Truck } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { useState } from "react";
 import { cn } from "../lib/utils";
 import { MenuItem } from "../data/menu";
 
-export function Hero({ isFullHeight, specials = [] }: { isFullHeight?: boolean, specials?: MenuItem[] }) {
+const features = [
+  {
+    id: "breakfast",
+    icon: Clock,
+    label: "Breakfast All Day",
+    info: "Waffles, Omelettes, and Breakfast Sandwiches are available from open to close. Mon-Fri: 6am-5pm, Sat-Sun: 6am-4pm."
+  },
+  {
+    id: "cards",
+    icon: CreditCard,
+    label: "Cards Accepted",
+    info: "We accept all major credit cards and mobile payments. Fast and secure checkout for your convenience."
+  },
+  {
+    id: "house",
+    icon: BadgeCheck,
+    label: "Made In-House",
+    info: "Award-winning muffins, roasted meats, and signature dressings prepared fresh daily in our kitchen."
+  },
+  {
+    id: "delivery",
+    icon: Truck,
+    label: "Local Delivery",
+    info: "Available 7am-5pm daily. Serving Manchester ($10 min) & Bedford. $2 delivery charge. 15% gratuity on $100+."
+  }
+];
+
+export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: MenuItem[] }) {
+  const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
+
   return (
     <section className={cn(
-      "p-10 transition-all duration-500 flex flex-col justify-center min-h-[500px]",
-      isFullHeight ? "h-[calc(100vh-64px)] pb-10" : "pb-16"
+      "px-6 md:px-16 pt-8 pb-12 transition-all duration-500 bg-bg",
+      !isFullHeight && "h-auto"
     )}>
-      <div className="flex flex-col lg:flex-row gap-12 items-start">
-        <div className="brand flex-1 max-w-2xl">
+      <div className="flex flex-col gap-12 max-w-7xl mx-auto w-full">
+        <div className="brand w-full flex flex-col items-center">
           <motion.div
-             initial={{ opacity: 0, y: 10 }}
+             initial={{ opacity: 0, y: -10 }}
              animate={{ opacity: 1, y: 0 }}
-             className="text-[14px] uppercase tracking-[0.6em] text-accent/60 font-black mb-4"
+             className="text-[10px] md:text-[12px] font-black uppercase tracking-[0.8em] text-accent/80 mb-4"
           >
             CAFE & GRILL
           </motion.div>
+          
           <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="font-display text-7xl md:text-[110px] xl:text-[130px] font-black leading-[0.8] tracking-tighter text-accent mb-12"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="font-display text-[42px] sm:text-[90px] md:text-[120px] font-black leading-[0.82] tracking-tighter text-accent mb-8 flex flex-col items-center text-center"
           >
-            THE<br />
-            BRIDGE.
+            <span>THE BRIDGE</span>
+            <span>CAFE.</span>
           </motion.h1>
           
           <motion.div 
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="space-y-6"
+            className="flex flex-col items-center w-full"
           >
-            <p className="text-xl md:text-2xl font-medium text-emerald-100/80 leading-tight italic font-display pr-12">
+            <p className="text-[13px] sm:text-[18px] md:text-[22px] font-semibold text-[#8EB08E]/90 leading-tight italic font-display text-center mb-6 max-w-2xl px-4">
               At The Bridge Café on Elm, we prepare everything in-house with only the freshest ingredients, herbs, and spices.
             </p>
             
-            <div className="flex flex-col gap-4 text-secondary text-sm font-medium tracking-wide">
-              <p className="border-l-2 border-orange-accent/30 pl-4 py-1">
-                Our items change periodically, so keep checking in with us! Craving something not on the menu? Call us – we make every item to order!
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="relative border-l-2 border-orange-accent/30 pl-6 max-w-lg mx-4"
+            >
+              <p className="text-[10px] md:text-[14px] text-secondary font-medium leading-relaxed tracking-tight text-left italic opacity-80">
+                "Our items change periodically, so keep checking in with us! Craving something not on the menu? Call us – we make every item to order!"
               </p>
-              
-              <div className="flex flex-wrap gap-6 pt-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-orange-accent" />
-                  <span className="uppercase text-[10px] font-black tracking-widest">Breakfast All Day</span>
+            </motion.div>
+
+            {/* Features (Desktop & Mobile) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-8 w-full mt-12 px-2 max-w-5xl border-t border-white/5 pt-12 relative">
+              {features.map((feature) => (
+                <div 
+                  key={feature.id}
+                  className="flex flex-col items-center gap-3 text-center relative group"
+                  onMouseEnter={() => setHoveredFeature(feature.id)}
+                  onMouseLeave={() => setHoveredFeature(null)}
+                >
+                  <AnimatePresence>
+                    {hoveredFeature === feature.id && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                        animate={{ opacity: 1, y: -10, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                        className="absolute bottom-full mb-6 left-1/2 -translate-x-1/2 w-64 p-5 bg-card border border-accent/20 rounded-2xl shadow-2xl z-50 pointer-events-none"
+                      >
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rotate-45 w-3 h-3 bg-card border-r border-b border-accent/20" />
+                        <div className="flex flex-col gap-2 relative z-10">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-accent">{feature.label}</span>
+                          <p className="text-[11px] text-secondary leading-relaxed font-medium">
+                            {feature.info}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <motion.div 
+                    whileHover={{ scale: 1.1 }}
+                    className={cn(
+                      "w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center transition-all duration-300",
+                      hoveredFeature === feature.id ? "bg-accent/20 shadow-lg shadow-accent/10" : "group-hover:bg-accent/10"
+                    )}
+                  >
+                    <feature.icon className={cn(
+                      "w-5 h-5 transition-colors duration-300",
+                      hoveredFeature === feature.id ? "text-accent" : "text-orange-accent"
+                    )} />
+                  </motion.div>
+                  <span className={cn(
+                    "uppercase text-[9px] font-black tracking-widest transition-colors duration-300",
+                    hoveredFeature === feature.id ? "text-white" : "text-secondary"
+                  )}>
+                    {feature.label}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-orange-accent" />
-                  <span className="uppercase text-[10px] font-black tracking-widest">Major Cards Accepted</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <BadgeCheck className="w-4 h-4 text-orange-accent" />
-                  <span className="uppercase text-[10px] font-black tracking-widest">Made In-House</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Truck className="w-4 h-4 text-orange-accent" />
-                  <span className="uppercase text-[10px] font-black tracking-widest whitespace-nowrap">We deliver - Manchester and surrounding areas</span>
-                </div>
-              </div>
+              ))}
             </div>
           </motion.div>
         </div>
-
-        {/* Specials Display (The "Red Box" Area) */}
-        {specials.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 }}
-            className="w-full lg:w-[450px] bg-card/40 border border-white/5 p-8 rounded-3xl backdrop-blur-xl group relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 p-8 opacity-5">
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              >
-                <div className="w-32 h-32 border-4 border-dashed border-white rounded-full" />
-              </motion.div>
-            </div>
-
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-accent/20 rounded-xl flex items-center justify-center">
-                <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
-              </div>
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-[0.3em] text-accent">FRESH TODAY</h3>
-                <p className="text-[10px] font-bold text-secondary tracking-widest">Weekly Chef Specials</p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              {specials.slice(0, 3).map((item, i) => (
-                <motion.div 
-                  key={item.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + (i * 0.1) }}
-                  className="relative pl-6 border-l border-white/10 group cursor-default"
-                >
-                  <div className="flex justify-between items-start gap-4 mb-2">
-                    <h4 className="text-sm font-black uppercase tracking-wider text-white group-hover:text-accent transition-colors leading-tight">
-                      {item.name}
-                    </h4>
-                    <span className="font-mono text-xs text-accent">${item.price.toFixed(2)}</span>
-                  </div>
-                  <p className="text-[11px] text-secondary font-medium leading-relaxed italic opacity-80">
-                    {item.description}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
-
-            <div className="mt-10 pt-6 border-t border-white/5 flex justify-between items-center group/btn cursor-pointer" onClick={() => {
-              const el = document.getElementById('menu');
-              el?.scrollIntoView({ behavior: 'smooth' });
-            }}>
-              <span className="text-[9px] font-black uppercase tracking-[0.3em] text-secondary group-hover/btn:text-white transition-colors">SCROLL FOR MENU</span>
-              <ChevronRight className="w-4 h-4 text-accent transform group-hover/btn:rotate-90 transition-transform" />
-            </div>
-          </motion.div>
-        )}
       </div>
     </section>
   );

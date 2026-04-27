@@ -1,0 +1,21 @@
+{
+  "name": "The Bridge Cafe",
+  "short_name": "Bridge Cafe",
+  "description": "Established Downtown Manchester cafe offering breakfast all day, signature paninis, and an AI order receptionist.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#E8D5C4",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/bridge-cafe/192/192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://picsum.photos/seed/bridge-cafe/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,11 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Helvetica Neue", Arial, "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Georgia", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", serif;
   
-  --color-bg: #121212;
+  --color-bg: #111111;
   --color-accent: #E8D5C4;
   --color-primary: #FFFFFF;
   --color-secondary: #999999;
@@ -15,9 +15,18 @@
 }
 
 @layer base {
+  html, body {
+    overflow-x: hidden;
+    height: 100%;
+    width: 100%;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
   body {
     background-color: var(--color-bg);
     color: var(--color-primary);
+    overscroll-behavior: none;
   }
 
   /* Custom Modern Scrollbar */

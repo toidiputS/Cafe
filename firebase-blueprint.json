@@ -35,7 +35,7 @@
         },
         "status": {
           "type": "string",
-          "enum": ["Order Received", "Preparing", "Out for Delivery", "Delivered", "Ready for Pickup"]
+          "enum": ["Order Received", "Pending", "Preparing", "Out for Delivery", "Delivered", "Ready for Pickup", "Completed", "Ready"]
         },
         "total": { "type": "number" },
         "isDelivery": { "type": "boolean" },
@@ -44,7 +44,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["customerName", "items", "status", "total", "createdAt"]
+      "required": ["customerId", "customerName", "items", "status", "total", "createdAt"]
     },
     "MenuItem": {
       "title": "Menu Item",
@@ -63,6 +63,20 @@
         "sortOrder": { "type": "number" }
       },
       "required": ["name", "price", "category"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Store customer reviews and ratings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "menuItemId": { "type": "string", "description": "Optional: set if reviewing a specific item" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userName", "rating", "comment", "createdAt"]
     }
   },
   "firestore": {
@@ -77,6 +91,10 @@
     "/menu/{itemId}": {
       "schema": "MenuItem",
       "description": "Collection of available menu items."
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Collection of customer reviews."
     }
   }
 }

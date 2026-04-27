@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { GoogleGenAI, Type } from "@google/genai";
 import { BUSINESS_INFO, MENU, CATEGORY_METADATA, type MenuItem } from "../data/menu";
-import { Send, User, Bot, ShoppingCart, Trash2, X, LogIn, Award, MapPin, CheckCircle2, Clock, ArrowLeft, Mic, MicOff, RotateCcw } from "lucide-react";
+import { Send, User, Bot, ShoppingCart, Trash2, X, LogIn, Award, MapPin, CheckCircle2, Clock, ArrowLeft, Mic, MicOff, RotateCcw, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "../lib/utils";
@@ -82,7 +82,7 @@ export function Receptionist({
     {
       role: "bot", 
       content: "Hello! Welcome to **The Bridge Cafe**. I'm your AI Waitress.\n\nAt The Bridge Café on Elm, we prepare everything in-house with only the freshest ingredients, herbs, and spices. Breakfast is served all day!\n\nWhat can I get started for you today?",
-      suggestions: ["Weekly Specials", "Homemade Soups", "Breakfast Menu", "Lunch Menu", "Desserts & Drinks", "Catering"] 
+      suggestions: ["Daily Specials", "Weekly Specials", "Homemade Soups", "Breakfast Menu", "Lunch Menu", "Desserts & Drinks"] 
     }
   ]);
 
@@ -119,16 +119,62 @@ export function Receptionist({
       if (lastInteraction.type === 'add') {
         const item = menu.find(m => m.name === lastInteraction.name);
         if (item) {
+          // Generate context-aware suggestions
+          const suggestions = [];
+          
+          // 1. Personalization / Customization
+          if (item.options && item.options.length > 0) {
+            suggestions.push(`Customize ${item.name}`);
+          } else {
+            suggestions.push("Customize it");
+          }
+
+          // 2. Complementary items based on category
+          const beverageCategories = ["Espresso", "Tea", "Coffee", "Juice", "Smoothie"];
+          const isBeverage = beverageCategories.includes(item.category);
+          const hasBeverageInCart = cart.some(i => {
+            const cartItem = menu.find(m => m.id === i.id);
+            return cartItem && beverageCategories.includes(cartItem.category);
+          });
+
+          if (item.category === "Breakfast") {
+            if (!hasBeverageInCart) suggestions.push("Add a Smoothie", "Fresh Coffee?");
+          } else if (item.category === "Lunch" || item.category === "Specials") {
+            suggestions.push("Add a Soup");
+            if (!hasBeverageInCart) suggestions.push("Fresh Juice?");
+          } else if (isBeverage) {
+            suggestions.push("Check Desserts", "Breakfast Items");
+          }
+
+          // 3. General catch-alls
+          if (suggestions.length < 3) {
+            suggestions.push("View Specials", "See Lunch Menu");
+          }
+
+          // Ensure uniqueness and limit to 4
+          const uniqueSuggestions = Array.from(new Set(suggestions)).slice(0, 4);
+
           // Add a message from bot acknowledging the pick
+          let complementaryText = "";
+          if (item.category === "Breakfast") {
+            complementaryText = hasBeverageInCart ? "Great pairing!" : "Want to add a freshly squeezed juice or a smoothie to that?";
+          } else if (item.category === "Lunch" || item.category === "Specials") {
+            complementaryText = "Would you like to add one of our homemade soups or a side to your order?";
+          } else if (isBeverage) {
+            complementaryText = "Hungry too? Our breakfast items are served all day, and we have fresh desserts made every morning!";
+          }
+
           setMessages(prev => [...prev, {
             role: "bot",
-            content: `Great choice! I've added the **${item.name}** to your order. Would you like to add anything else or customize this item?`,
-            suggestions: ["Customize it", "See Lunch Menu", "View Specials"]
+            content: `Great choice! I've added the **${item.name}** to your order. ${
+              item.category === "Breakfast" ? "Breakfast is served all day here!" : ""
+            } ${complementaryText} ${item.options ? `Would you like to customize it (bread, options)?` : ""}`,
+            suggestions: uniqueSuggestions
           }]);
         }
       }
     }
-  }, [lastInteraction, menu]);
+  }, [lastInteraction, menu, cart]);
 
   const callAIWithRetry = async (params: any, retries = 5, delay = 2000): Promise<any> => {
     try {
@@ -179,8 +225,8 @@ export function Receptionist({
             RESTRICTION: Do NOT list the whole menu. Just ask about THIS specific item. 1-2 sentences max.
           `;
           try {
-            const result = await callAIWithRetry({
-              model: "gemini-2.0-flash",
+            const result = await ai.models.generateContent({
+              model: "gemini-3-flash-preview",
               contents: [
                 ...messages.map(m => ({
                   role: m.role === "user" ? "user" : "model",
@@ -189,7 +235,7 @@ export function Receptionist({
                 { role: "user", parts: [{ text: prompt }] }
               ]
             });
-            const text = result.response.text();
+            const text = result.text || "";
             setMessages(prev => [...prev, { role: "bot", content: text }]);
           } catch (e) {
             console.error("Waitress brain error:", e);
@@ -325,8 +371,8 @@ export function Receptionist({
 
     const { total: currentTotal } = calculateTotal();
     try {
-      const response = await callAIWithRetry({
-        model: "gemini-2.0-flash",
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
         contents: [
           ...messages.map(m => ({
             role: m.role === "user" ? "user" : "model",
@@ -343,14 +389,25 @@ export function Receptionist({
           Menu: ${JSON.stringify(menu)}
           Current Cart: ${JSON.stringify(cart)}
           Current Total: $${currentTotal.toFixed(2)}
+          Loyalty Status: ${JSON.stringify(loyalty)}
           Guidelines:
           1. WAITRESS BRAIN: You are an efficient waitress. Your job is to guide users to the menu board (the main UI) and then handle the details.
-          2. STRICT NO-LISTING POLICY: You are FORBIDDEN from listing menu items, prices, or specials in the chat. They are already visible to the user on the screen.
-          3. NAVIGATION: If a user asks about specials, soups, or any menu category:
+          2. DAILY SPECIALS: We have a dedicated 'Daily Specials' section. ALWAYS encourage users to try them if they seem undecided or ask about 'what is new' or 'specials'.
+          3. STRICT NO-LISTING POLICY: You are FORBIDDEN from listing menu items, prices, or specials in the chat. They are already visible to the user on the screen.
+          4. NAVIGATION: If a user asks about specials, daily specials, soups, or any menu category:
              a) Call the appropriate 'highlightCategory' or 'highlightMenuItem' tool immediately.
              b) Respond with: "I've pointed out the [Category/Item] for you on the menu board! Just tap it to add it to your cart, and I'll take care of the rest."
-          4. THE FOLLOW-UP: When a user adds an item, you will see it in the Current Cart. Your primary focus is then asking for customizations (bread, sides, milk, etc.) as an expert waitress would.
-          5. CONCISE: Keep responses to exactly 1 brief, friendly sentence.`,
+          5. PROACTIVE SUGGESTIONS: When a user adds an item:
+             a) If it's food (Breakfast/Lunch/Special), proactively suggest a complement (Smoothie, Juice, Soup, or Coffee).
+             b) If it's a drink, suggest a dessert or a signature sandwich.
+             c) Always ask about customizations if the item has them (like bread choice for sandwiches or milk for coffee).
+          5. LOYALTY REDEMPTION: 
+             a) Users earn 1 point per $1 spent.
+             b) They can redeem points for a discount: 10 points = $10 discount.
+             c) Redemption must be in multiples of 10 points (10, 20, 30...).
+             d) If a user has 10 or more points, PROACTIVELY ask if they would like to redeem them whenever they are nearing checkout or checking their total.
+             e) Before calling 'applyLoyaltyDiscount', ask the user EXACTLY how many points they wish to redeem (e.g. "You have 25 points! Would you like to use 10 points for a $10 discount, or 20 for $20?").
+          6. CONCISE: Keep responses to exactly 1-2 brief, friendly sentences. Use conversational pills for common next steps like [[Customize it]] or [[View Specials]].`,
           tools: [{
             functionDeclarations: [
               {
@@ -528,9 +585,9 @@ export function Receptionist({
             if (!loyalty || loyalty.loyaltyPoints < pts) {
               toolResponseStr += "Insufficient points. ";
             } else {
-              const discountValue = Math.floor(pts / 10);
+              const discountValue = Math.floor(pts / 10) * 10;
               setDiscount(discountValue);
-              toolResponseStr += `Applied $${discountValue} discount! Your total is updated. `;
+              toolResponseStr += `Applied $${discountValue} discount (from ${pts} points)! Your total is updated. `;
             }
           }
           if (call.name === "cancelOrder") {
@@ -613,8 +670,8 @@ export function Receptionist({
           }
         }
         
-        const followUp = await callAIWithRetry({
-          model: "gemini-2.0-flash",
+        const followUp = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
           contents: [
             ...messages.map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content + (m.suggestions?.length ? "\n" + m.suggestions.map(s => `[[${s}]]`).join(" ") : "") }] })),
             { role: "user", parts: [{ text: userMsg }] },
@@ -689,7 +746,7 @@ export function Receptionist({
       </AnimatePresence>
 
       {/* Main Content Area: Chat or Confirmation */}
-      <div className="flex-1 overflow-y-auto relative custom-scrollbar">
+      <div className="flex-1 overflow-hidden relative flex flex-col">
         <AnimatePresence mode="wait">
           {lastPlacedOrder ? (
             <motion.div
@@ -697,7 +754,7 @@ export function Receptionist({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
-              className="absolute inset-0 p-8 flex flex-col"
+              className="absolute inset-0 p-8 flex flex-col bg-bg overflow-y-auto custom-scrollbar z-[70]"
             >
               <div className="flex-1 flex flex-col items-center justify-center text-center max-w-sm mx-auto">
                 <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-6">
@@ -747,180 +804,111 @@ export function Receptionist({
             </motion.div>
           ) : (
             <motion.div
-              key="chat"
+              key="assistant"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="h-full flex flex-col relative"
+              className="flex-1 flex flex-col min-h-0 relative"
             >
-                  {/* Cart Slider Overlay */}
-                  <AnimatePresence>
-                    {isCartOpen && (
-                      <motion.div
-                        initial={{ x: "100%" }}
-                        animate={{ x: "0%" }}
-                        exit={{ x: "100%" }}
-                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="absolute inset-0 bg-bg border-l border-border-dim shadow-2xl z-50 overflow-y-auto custom-scrollbar flex flex-col p-6"
-                      >
-                    <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
-                          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                            <ShoppingCart className="w-4 h-4 text-accent" />
-                          </div>
-                          <h3 className="text-sm font-black uppercase tracking-widest text-white">Your Order</h3>
-                        </div>
-                        {cart.length > 0 && (
-                          <div className="flex items-center gap-2 pl-11">
-                            <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
-                              {cart.reduce((a, b) => a + b.quantity, 0)} Items
-                            </span>
-                            <div className="w-1 h-1 bg-white/10 rounded-full" />
-                            <span className="text-xs font-black text-accent font-mono">${calculateTotal().total.toFixed(2)}</span>
-                          </div>
-                        )}
-                      </div>
-                      <button 
-                        onClick={() => setIsCartOpen(false)}
-                        className="p-2 hover:bg-white/10 rounded-full transition-colors text-secondary hover:text-white"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+              {/* Mini Cart Header / Toggle */}
+              <div className="shrink-0 bg-card/50 border-b border-white/5 pb-2 transition-all">
+                <div 
+                  onClick={() => setIsCartOpen(!isCartOpen)}
+                  className="px-6 py-4 flex items-center justify-between cursor-pointer group active:bg-white/5 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                      cart.length > 0 ? "bg-accent/20 text-accent ring-2 ring-accent/10" : "bg-white/5 text-secondary"
+                    )}>
+                      <ShoppingCart size={18} />
                     </div>
-
-                    {cart.length === 0 ? (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
-                        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-6">
-                          <ShoppingCart className="w-8 h-8 text-secondary/30" />
-                        </div>
-                        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-white mb-2">Cart is empty</h4>
-                        <p className="text-[11px] text-secondary font-medium leading-relaxed italic opacity-60">
-                          "I'm ready when you are! Just tap any items you'd like to add."
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="flex-1 space-y-6">
-                        <div className="space-y-4">
-                          {cart.map((item, idx) => (
-                            <div key={`${item.id}-${idx}`} className="group">
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="flex gap-3">
-                                  <span className="text-xs font-black text-accent">{item.quantity}x</span>
-                                  <div className="flex flex-col">
-                                    <span className="text-xs text-white font-bold leading-none mb-1 uppercase tracking-wider">{item.name}</span>
-                                    <span className="text-[10px] font-mono text-secondary">${(item.price * item.quantity).toFixed(2)}</span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button 
-                                    onClick={() => addToCart(item.name, -1, item.options, item.customizations)}
-                                    className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 text-orange-accent"
-                                  >-</button>
-                                  <button 
-                                    onClick={() => addToCart(item.name, 1, item.options, item.customizations)}
-                                    className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 text-orange-accent"
-                                  >+</button>
-                                  <button 
-                                    onClick={() => removeFromCart(item.name)}
-                                    className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center hover:bg-red-500/20 text-red-400 ml-1"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
-                              {(item.options || item.customizations) && (
-                                <div className="pl-7 space-y-1">
-                                  {item.options && (
-                                    <div className="text-[9px] text-white/50 uppercase tracking-widest flex items-center gap-2 font-bold">
-                                      <span className="w-1 h-1 bg-white/20 rounded-full" />
-                                      {item.options}
-                                    </div>
-                                  )}
-                                  {item.customizations && (
-                                    <div className="text-[9px] text-orange-accent/80 uppercase tracking-widest flex items-center gap-2 font-black italic">
-                                      <span className="w-1 h-1 bg-orange-accent/30 rounded-full" />
-                                      {item.customizations}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="mt-auto pt-8 border-t border-white/5">
-                      <div className="space-y-4 mb-6">
-                        {/* Cost Breakdown */}
-                        <div className="space-y-2 pb-4 border-b border-white/5">
-                          <div className="flex justify-between items-center text-[10px] text-secondary font-black uppercase tracking-widest">
-                            <span>Subtotal</span>
-                            <span className="font-mono text-xs">${calculateTotal().subtotal.toFixed(2)}</span>
-                          </div>
-                          
-                          {discount > 0 && (
-                            <div className="flex justify-between items-center text-orange-accent">
-                              <span className="text-[10px] font-black uppercase tracking-widest">Loyalty Discount</span>
-                              <span className="font-mono text-xs">-${discount.toFixed(2)}</span>
-                            </div>
-                          )}
-                          
-                          {isDelivery && (
-                            <div className="flex justify-between items-center text-secondary">
-                              <span className="text-[10px] font-black uppercase tracking-widest">Delivery Fee {deliveryType === 'express' && '(Express)'}</span>
-                              <span className="font-mono text-xs">${calculateTotal().deliveryCharge.toFixed(2)}</span>
-                            </div>
-                          )}
-                          
-                          {calculateTotal().gratuity > 0 && (
-                            <div className="flex justify-between items-center text-secondary italic">
-                              <span className="text-[10px] font-black uppercase tracking-widest">Auto Gratuity (15%)</span>
-                              <span className="font-mono text-xs">${calculateTotal().gratuity.toFixed(2)}</span>
-                            </div>
-                          )}
-                        </div>
-
-                    <div className="flex justify-between items-end pt-2 px-1">
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/60">Grand Total</span>
-                        <p className="text-[8px] text-white/20 uppercase font-black tracking-widest mt-0.5 italic">In-house Prep</p>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        <span className="text-3xl font-black text-white leading-none font-display tracking-tighter tabular-nums">${calculateTotal().total.toFixed(2)}</span>
-                        <span className="text-[10px] text-accent font-black uppercase tracking-widest mt-1">Ready to Order</span>
-                      </div>
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-widest text-white leading-tight">My Food Order</h3>
+                      <p className="text-[9px] text-secondary font-bold uppercase tracking-widest mt-1 opacity-60">
+                        {cart.length === 0 ? "Cart is empty" : `${cart.reduce((a, b) => a + b.quantity, 0)} Items Added`}
+                      </p>
                     </div>
                   </div>
-
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setIsCartOpen(false)}
-                      className="flex-1 bg-white/5 hover:bg-white/10 text-secondary hover:text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-white/5 active:scale-95"
+                  <div className="flex items-center gap-4">
+                    {cart.length > 0 && (
+                      <span className="text-sm font-black text-accent font-mono tracking-tighter tabular-nums">
+                        ${calculateTotal().total.toFixed(2)}
+                      </span>
+                    )}
+                    <motion.div
+                      animate={{ rotate: isCartOpen ? 180 : 0 }}
+                      className="text-secondary"
                     >
-                      Keep Browsing
-                    </button>
-                    <button 
-                      onClick={() => {
-                        onInitPayment(calculateTotal().total);
-                        setIsCartOpen(false);
-                      }}
-                      disabled={cart.length === 0}
-                      className="flex-[2] bg-accent text-bg py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-orange-accent hover:text-white transition-all disabled:opacity-20 disabled:grayscale transform active:scale-95 shadow-xl shadow-accent/20"
-                    >
-                      Checkout Now
-                    </button>
+                      <Plus size={16} className={cn("transition-all", isCartOpen ? "rotate-45" : "rotate-0")} strokeWidth={3} />
+                    </motion.div>
                   </div>
                 </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
-              {/* Messages List Overlay (Existing Logic) */}
+                <AnimatePresence>
+                  {isCartOpen && cart.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden bg-bg/30"
+                    >
+                      <div className="px-6 pb-6 pt-2 space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+                        {cart.map((item, idx) => (
+                          <div key={`${item.id}-${idx}`} className="group flex justify-between items-start">
+                            <div className="flex gap-3">
+                              <span className="text-[10px] font-black text-accent mt-0.5">{item.quantity}x</span>
+                              <div className="flex flex-col">
+                                <span className="text-[11px] text-white font-bold leading-tight uppercase tracking-wider">{item.name}</span>
+                                {item.options && (
+                                  <span className="text-[9px] text-secondary font-medium italic opacity-60">{item.options}</span>
+                                )}
+                                <span className="text-[9px] font-mono text-accent/70 mt-0.5">${(item.price * item.quantity).toFixed(2)}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); addToCart(item.name, -1, item.options, item.customizations); }}
+                                className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 text-orange-accent text-[10px]"
+                              >-</button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); addToCart(item.name, 1, item.options, item.customizations); }}
+                                className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 text-orange-accent text-[10px]"
+                              >+</button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); removeFromCart(item.name); }}
+                                className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center hover:bg-red-500/20 text-red-400 ml-1"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        <div className="pt-4 border-t border-white/5 flex gap-2">
+                           <button 
+                             onClick={() => onInitPayment(calculateTotal().total)}
+                             className="flex-1 bg-accent text-bg py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-accent hover:text-white transition-all shadow-xl shadow-accent/10"
+                           >
+                             Checkout
+                           </button>
+                           <button 
+                             onClick={() => setIsCartOpen(false)}
+                             className="px-4 py-3 bg-white/5 text-secondary text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white/10"
+                           >
+                              Hide
+                           </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Messages Container */}
               <div className="flex-1 flex min-h-0 relative">
                 {/* Context Labels (Vertical Rail per Screenshot) */}
-                <div className="w-10 border-r border-white/5 flex flex-col items-center py-6 sticky top-0 h-full overflow-hidden shrink-0">
+                <div className="hidden sm:flex w-10 border-r border-white/5 flex-col items-center py-6 sticky top-0 h-full overflow-hidden shrink-0">
                   <div className="flex flex-col items-center gap-12 w-full">
                     <AnimatePresence mode="popLayout">
                       {sideContext.map((title, idx) => (
@@ -943,7 +931,7 @@ export function Receptionist({
 
                 <div 
                   ref={scrollRef} 
-                  className="flex-1 overflow-y-auto p-6 space-y-4 text-[13px] scroll-smooth custom-scrollbar"
+                  className="flex-1 overflow-y-auto p-6 space-y-4 text-[13px] custom-scrollbar"
                   style={{ paddingBottom: cartHeight + 60 }}
                 >
                 {messages.map((msg, i) => (
@@ -1001,44 +989,11 @@ export function Receptionist({
               <div 
                 ref={cartRef}
                 className={cn(
-                  "absolute bottom-0 left-0 right-0 p-6 pt-0 bg-gradient-to-t from-bg to-transparent transition-all duration-300",
+                  "absolute bottom-0 left-0 right-0 p-6 pt-0 bg-gradient-to-t from-bg via-bg/80 to-transparent transition-all duration-300",
                   isCartOpen ? "z-[60]" : "z-40"
                 )}
               >
                 <div className="relative group/input">
-                  {/* Persistent Cart Summary Pill */}
-                  <div className="absolute -top-14 left-0 right-0 flex justify-center">
-                    <button
-                      onClick={() => setIsCartOpen(!isCartOpen)}
-                      className={cn(
-                        "flex items-center gap-3 px-6 py-2 border rounded-full shadow-2xl transition-all active:scale-95",
-                        isCartOpen 
-                          ? "bg-accent border-accent text-bg" 
-                          : "bg-black/80 backdrop-blur-xl border-white/10 text-white"
-                      )}
-                    >
-                      <div className="relative">
-                        <ShoppingCart className={cn("w-3.5 h-3.5", isCartOpen ? "text-bg" : "text-accent")} />
-                        {cart.length > 0 && !isCartOpen && (
-                          <span className="absolute -top-2 -right-2 w-4 h-4 bg-accent text-bg text-[9px] font-black rounded-full flex items-center justify-center">
-                            {cart.reduce((a, b) => a + b.quantity, 0)}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest">
-                        {isCartOpen ? "Close Cart" : (cart.length === 0 ? "Empty Cart" : "View Cart")}
-                      </span>
-                      {cart.length > 0 && (
-                        <div className={cn(
-                          "text-[11px] font-black font-mono ml-1 border-l pl-3",
-                          isCartOpen ? "border-bg/20" : "border-white/10 text-accent"
-                        )}>
-                          ${calculateTotal().total.toFixed(2)}
-                        </div>
-                      )}
-                    </button>
-                  </div>
-
                   <form 
                     onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                     className="relative flex gap-2 items-center"

@@ -16,7 +16,8 @@ import {
   ShoppingBag,
   TrendingUp,
   Search,
-  LayoutDashboard
+  LayoutDashboard,
+  LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../lib/firebase";
@@ -27,20 +28,22 @@ import {
   deleteDoc, 
   doc, 
   getDocs,
+  setDoc,
   query,
   orderBy,
   onSnapshot,
   limit,
   Timestamp,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from "firebase/firestore";
-import { type MenuItem } from "../data/menu";
+import { type MenuItem, MENU as STATIC_MENU } from "../data/menu";
 import { cn } from "../lib/utils";
 
 interface AdminPanelProps {
   onClose: () => void;
   menu: MenuItem[];
-  onMenuUpdate: () => void;
+  onMenuUpdate: (newMenu?: MenuItem[]) => void;
 }
 
 type Tab = "dashboard" | "orders" | "menu" | "settings";
@@ -54,6 +57,8 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("All");
   const [orderFilter, setOrderFilter] = useState<string>("all");
+  const [showSyncConfirm, setShowSyncConfirm] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "success" | "error">("idle");
 
   const categories = ["All", ...Array.from(new Set(menu.map(item => item.category)))];
 
@@ -185,7 +190,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
               onClick={onClose}
               className="w-full flex items-center justify-center gap-3 p-3 text-secondary hover:text-white transition-colors text-[10px] font-black uppercase tracking-widest"
             >
-              <LogIn className="w-4 h-4 rotate-180" />
+              <LogOut className="w-4 h-4" />
               <span className="hidden lg:block">Exit Panel</span>
             </button>
           </div>
@@ -234,13 +239,13 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
 
             {activeTab === "orders" && (
               <div className="space-y-6">
-                <div className="flex items-center gap-4 pb-4 border-b border-white/10">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 pb-4 border-b border-white/10">
                   {["all", "pending", "preparing", "ready", "completed"].map(f => (
                     <button
                       key={f}
                       onClick={() => setOrderFilter(f)}
                       className={cn(
-                        "px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                        "w-full md:w-auto px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all text-left md:text-center",
                         orderFilter === f ? "bg-white text-bg" : "bg-white/5 text-secondary hover:bg-white/10"
                       )}
                     >
@@ -347,13 +352,13 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
             )}
 
             {activeTab === "menu" && (
-              <div className="flex h-full gap-8">
-                {/* Menu List */}
-                <div className="w-1/3 flex flex-col gap-4">
-                  <div className="space-y-4">
+              <div className="flex flex-col md:flex-row h-full gap-8">
+                {/* Menu Sidebar */}
+                <div className="w-full md:w-1/3 flex flex-col min-h-0">
+                  <div className="space-y-4 pb-6 border-b border-white/10 shrink-0">
                     <button 
                       onClick={() => setEditingItem({ name: "", price: 0, category: "Breakfast" })}
-                      className="w-full py-4 bg-white text-bg rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-accent transition-all"
+                      className="w-full py-4 bg-white text-bg rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-accent transition-all shadow-lg"
                     >
                       <Plus className="w-4 h-4" />
                       Add New Item
@@ -367,33 +372,57 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                     </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                  {/* Category Filters (Scrollable on Mobile) */}
+                  <div className="py-4 shrink-0">
+                    <Label>Categories</Label>
+                    <div className="flex md:flex-wrap gap-2 mt-2 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 scrollbar-hide no-scrollbar">
+                      {categories.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => setFilterCategory(cat)}
+                          className={cn(
+                            "whitespace-nowrap px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border shrink-0",
+                            filterCategory === cat ? "bg-accent text-bg border-accent shadow-lg" : "bg-white/5 text-secondary border-transparent hover:border-white/10"
+                          )}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Scrollable Item List */}
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar min-h-0">
                     {filteredItems.map(item => (
                       <button
                         key={item.id}
                         onClick={() => setEditingItem(item)}
                         className={cn(
                           "w-full p-4 rounded-xl border transition-all text-left flex justify-between items-center group",
-                          editingItem?.id === item.id ? "bg-accent/10 border-accent/50" : "bg-white/5 border-transparent hover:border-white/10"
+                          editingItem?.id === item.id ? "bg-accent/10 border-accent/50 shadow-inner" : "bg-white/5 border-transparent hover:border-white/10"
                         )}
                       >
-                        <div>
-                          <p className="text-xs font-bold text-white">{item.name}</p>
-                          <p className="text-[10px] text-secondary font-mono mt-1">${item.price.toFixed(2)}</p>
+                        <div className="min-w-0 flex-1 mr-4">
+                          <p className="text-xs font-bold text-white truncate">{item.name}</p>
+                          <p className="text-[10px] text-secondary font-mono mt-1">
+                            ${Array.isArray(item.price) 
+                              ? item.price.map(p => p.toFixed(2)).join(", ") 
+                              : item.price.toFixed(2)}
+                          </p>
                         </div>
-                        {item.isSpecial && <Star className="w-3.5 h-3.5 text-accent fill-accent" />}
+                        {item.isSpecial && <Star className="w-3.5 h-3.5 text-accent fill-accent shrink-0" />}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Editor */}
-                <div className="flex-1 bg-[#1a1a1a] rounded-2xl border border-white/5 p-8 overflow-y-auto custom-scrollbar">
+                <div className="flex-1 bg-[#1a1a1a] rounded-2xl border border-white/5 p-4 md:p-8 overflow-y-auto custom-scrollbar shadow-2xl min-h-0">
                   {editingItem ? (
-                    <form onSubmit={handleSave} className="space-y-8">
+                    <form onSubmit={handleSave} className="space-y-6 md:space-y-8">
                       <div>
                         <Label>Basic Information</Label>
-                        <div className="grid grid-cols-2 gap-6 mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                           <InputBlock 
                             label="Item Name" 
                             value={editingItem.name || ""} 
@@ -410,7 +439,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
 
                       <div>
                         <Label>Classification</Label>
-                        <div className="grid grid-cols-2 gap-6 mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                           <InputBlock 
                             label="Category" 
                             value={editingItem.category || ""} 
@@ -448,18 +477,18 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                         />
                       </div>
 
-                      <div className="flex justify-end gap-3 pt-6 border-t border-white/10">
+                      <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-white/10">
                         <button
                           type="button"
                           onClick={() => setEditingItem(null)}
-                          className="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-secondary hover:text-white transition-colors"
+                          className="w-full sm:w-auto px-6 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-secondary hover:text-white transition-colors bg-white/5 border border-white/10 sm:border-none"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
                           disabled={isSaving}
-                          className="px-10 py-3 bg-white text-bg rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-accent transition-all disabled:opacity-50"
+                          className="w-full sm:w-auto px-10 py-4 bg-white text-bg rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-accent transition-all disabled:opacity-50 shadow-xl"
                         >
                           {isSaving ? "Syncing..." : <><Save className="w-4 h-4" /> Save Item</>}
                         </button>
@@ -472,6 +501,141 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                       <p className="text-xs uppercase tracking-widest mt-2">Select an item from the sidebar to modify</p>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "settings" && (
+              <div className="max-w-2xl mx-auto space-y-12">
+                <div className="bg-[#1a1a1a] rounded-3xl border border-accent/20 p-8 space-y-6 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -translate-y-16 translate-x-16 blur-2xl group-hover:bg-accent/10 transition-all" />
+                  
+                  <div className="flex items-center gap-4 relative z-10">
+                    <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center border border-accent/20">
+                      <LayoutDashboard className="w-6 h-6 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-display font-black text-white uppercase tracking-tighter">Database Sync</h3>
+                      <p className="text-[10px] text-secondary font-medium uppercase tracking-widest mt-1">Force update menu from source code</p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-secondary leading-relaxed max-w-lg">
+                    This will overwrite your existing cloud-stored menu with the static menu items defined in the application's source code. 
+                    <span className="text-orange-accent block font-bold mt-2">Warning: All manual edits performed in this panel will be lost.</span>
+                  </p>
+
+                    {!showSyncConfirm ? (
+                      <button
+                        onClick={() => {
+                          setShowSyncConfirm(true);
+                          setSyncStatus("idle");
+                        }}
+                        disabled={isSaving || syncStatus === "success"}
+                        className={cn(
+                          "w-full sm:w-auto px-10 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative z-10",
+                          syncStatus === "success" ? "bg-green-500 text-white" : "bg-accent text-bg hover:bg-orange-accent"
+                        )}
+                      >
+                        {syncStatus === "success" ? "Restore Complete ✓" : "Sync Database with Code"}
+                      </button>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row gap-3 items-center">
+                        <button
+                          onClick={async () => {
+                            setIsSaving(true);
+                            try {
+                              // 1. Delete all existing menu docs
+                              const snap = await getDocs(collection(db, "menu"));
+                              const deleteBuffer = snap.docs;
+                              
+                              let currentBatch = writeBatch(db);
+                              let count = 0;
+
+                              for (const d of deleteBuffer) {
+                                currentBatch.delete(d.ref);
+                                count++;
+                                if (count >= 400) {
+                                  await currentBatch.commit();
+                                  currentBatch = writeBatch(db);
+                                  count = 0;
+                                }
+                              }
+                              if (count > 0) await currentBatch.commit();
+
+                              // 2. Add static items
+                              const staticItems = STATIC_MENU;
+                              
+                              currentBatch = writeBatch(db);
+                              count = 0;
+
+                              for (const item of staticItems) {
+                                const { id, ...data } = item;
+                                const docRef = doc(db, "menu", id);
+                                currentBatch.set(docRef, data);
+                                count++;
+                                if (count >= 400) {
+                                  await currentBatch.commit();
+                                  currentBatch = writeBatch(db);
+                                  count = 0;
+                                }
+                              }
+                              if (count > 0) await currentBatch.commit();
+
+                              onMenuUpdate(staticItems);
+                              setSyncStatus("success");
+                              setShowSyncConfirm(false);
+                            } catch (err) {
+                              console.error("Sync failed:", err);
+                              setSyncStatus("error");
+                              setError(err instanceof Error ? err.message : "Unknown error");
+                            } finally {
+                              setIsSaving(false);
+                            }
+                          }}
+                          disabled={isSaving}
+                          className="w-full sm:w-auto px-10 py-4 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all disabled:opacity-50 relative z-10 animate-pulse"
+                        >
+                          {isSaving ? "Overwriting..." : "Confirm: Wipe & Sync"}
+                        </button>
+                        <button
+                          onClick={() => setShowSyncConfirm(false)}
+                          disabled={isSaving}
+                          className="text-[10px] font-black uppercase tracking-widest text-secondary hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+
+                    {syncStatus === "error" && (
+                      <p className="text-red-500 text-[10px] font-bold uppercase mt-2">{error}</p>
+                    )}
+                    {syncStatus === "success" && (
+                      <p className="text-green-500 text-[10px] font-bold uppercase mt-2">Menu has been reverted to the original code version.</p>
+                    )}
+                </div>
+
+                <div className="bg-[#1a1a1a] rounded-3xl border border-white/5 p-8 space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
+                      <Settings className="w-6 h-6 text-secondary" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-display font-black text-white uppercase tracking-tighter">System Info</h3>
+                      <p className="text-[10px] text-secondary font-medium uppercase tracking-widest mt-1">Active Database & Node Status</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between py-2 border-b border-white/5">
+                      <span className="text-[10px] text-secondary uppercase font-bold tracking-widest">Environment</span>
+                      <span className="text-[10px] text-white font-mono">Production</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-white/5">
+                      <span className="text-[10px] text-secondary uppercase font-bold tracking-widest">Menu Items</span>
+                      <span className="text-[10px] text-white font-mono">{menu.length}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

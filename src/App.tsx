@@ -9,7 +9,7 @@ import { Hero } from "./components/Hero";
 import { MenuSection } from "./components/MenuSection";
 import { Receptionist } from "./components/Receptionist";
 import { SidebarInfo } from "./components/SidebarInfo";
-import { MENU, type MenuItem } from "./data/menu";
+import { MENU, type MenuItem, CATEGORY_METADATA, SUBCATEGORY_ORDER } from "./data/menu";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { PaymentForm } from "./components/PaymentForm";
@@ -18,6 +18,7 @@ import { auth, db } from "./lib/firebase";
 import { doc, updateDoc, serverTimestamp, collection, query, getDocs, setDoc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { AdminPanel } from "./components/AdminPanel";
+import { ReviewSection } from "./components/ReviewSection";
 import { Settings } from "lucide-react";
 import { cn } from "./lib/utils";
 
@@ -49,7 +50,17 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [lastInteraction, setLastInteraction] = useState<{ type: 'click' | 'add', name: string } | null>(null);
 
-  const fetchMenu = useCallback(async () => {
+  useEffect(() => {
+    if (isAssistantOpen) {
+      setIsSidebarOpen(false);
+    }
+  }, [isAssistantOpen]);
+
+  const fetchMenu = useCallback(async (newMenu?: MenuItem[]) => {
+    if (newMenu) {
+      setMenu(newMenu);
+      return;
+    }
     try {
       const q = query(collection(db, "menu"));
       const snap = await getDocs(q);
@@ -126,16 +137,18 @@ export default function App() {
     });
   }, [fetchMenu, migrateMenu]);
 
-  const addToCart = useCallback((itemName: string, quantity: number = 1, options?: string, customizations?: string) => {
+  const addToCart = useCallback((itemName: string, quantity: number = 1, options?: string, customizations?: string, specificPrice?: number) => {
     const item = menu.find(m => m.name.toLowerCase().includes(itemName.toLowerCase()));
     if (!item) return `Sorry, I couldn't find "${itemName}" on our menu.`;
     
+    const priceToUse = specificPrice ?? (Array.isArray(item.price) ? item.price[0] : item.price);
+
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id && i.options === options && i.customizations === customizations);
       if (existing) {
         return prev.map(i => i === existing ? { ...i, quantity: i.quantity + quantity } : i);
       }
-      return [...prev, { id: item.id, name: item.name, price: item.price, quantity, options, customizations }];
+      return [...prev, { id: item.id, name: item.name, price: priceToUse, quantity, options, customizations }];
     });
 
     setHighlightedItemId(item.id);
@@ -230,24 +243,37 @@ export default function App() {
     },
   }), [clientSecret]);
 
-  const sortMenu = (items: MenuItem[]) => {
-    return [...items].sort((a, b) => {
-      const priority: Record<string, number> = { "Specials": 1, "Soups": 2 };
-      const aP = priority[a.category] || 99;
-      const bP = priority[b.category] || 99;
-      
-      if (aP !== bP) return aP - bP;
-      // Secondary sort by explicit sortOrder if available
-      return (a.sortOrder || 0) - (b.sortOrder || 0);
-    });
-  };
+  const categories = useMemo(() => Object.keys(CATEGORY_METADATA).filter(cat => menu.some(m => m.category === cat)), [menu]);
 
-  const sortedMenu = useMemo(() => sortMenu(menu), [menu]);
-  const categories = useMemo(() => Array.from(new Set(sortedMenu.map(m => m.category))), [sortedMenu]);
-  const heroSpecials = useMemo(() => sortedMenu.filter(m => m.category === "Specials" || m.isSpecial).slice(0, 3), [sortedMenu]);
+  const sortedMenu = useMemo(() => {
+    return [...menu].sort((a, b) => {
+      const aCatIdx = categories.indexOf(a.category);
+      const bCatIdx = categories.indexOf(b.category);
+      
+      if (aCatIdx !== bCatIdx) return (aCatIdx === -1 ? 999 : aCatIdx) - (bCatIdx === -1 ? 999 : bCatIdx);
+
+      // Within category, sort by subcategory order
+      const subcatOrder = SUBCATEGORY_ORDER[a.category] || [];
+      const aSubIdx = subcatOrder.indexOf(a.subcategory || "");
+      const bSubIdx = subcatOrder.indexOf(b.subcategory || "");
+      
+      if (aSubIdx !== bSubIdx) return (aSubIdx === -1 ? 999 : aSubIdx) - (bSubIdx === -1 ? 999 : bSubIdx);
+
+      // Within subcategory, sort by sortOrder (defaulting to high value to put un-ordered items at end)
+      const aSort = a.sortOrder !== undefined ? a.sortOrder : 999;
+      const bSort = b.sortOrder !== undefined ? b.sortOrder : 999;
+      
+      if (aSort !== bSort) return aSort - bSort;
+
+      // Stable sort: use original array index as fallback
+      return MENU.indexOf(a) - MENU.indexOf(b);
+    });
+  }, [menu, categories]);
+
+  const heroSpecials = useMemo(() => sortedMenu.filter(m => m.isSpecial).slice(0, 3), [sortedMenu]);
 
   return (
-    <div className="min-h-screen bg-bg font-sans selection:bg-orange-accent/30 selection:text-orange-accent pt-16 overflow-x-hidden">
+    <div className="min-h-screen min-h-[100dvh] bg-bg font-sans selection:bg-orange-accent/30 selection:text-orange-accent pt-16 overflow-x-hidden relative">
       <Header 
         isAdmin={isAdmin} 
         user={user} 
@@ -260,7 +286,7 @@ export default function App() {
       />
 
       <div className={cn(
-        "flex flex-col h-[calc(100vh-64px)] overflow-hidden relative transition-all duration-500",
+        "flex flex-col h-[calc(100vh-64px)] h-[calc(100dvh-64px)] overflow-hidden relative transition-all duration-500",
         isAssistantOpen ? "lg:pr-[400px]" : "lg:pr-0"
       )}>
         {/* Admin Panel */}
@@ -290,7 +316,7 @@ export default function App() {
         </AnimatePresence>
 
         {/* Center: Hero & Menu */}
-        <main className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar border-r border-border-dim">
+        <main className="flex-1 overflow-y-auto custom-scrollbar border-r border-border-dim">
           <Hero isFullHeight={isSidebarOpen} specials={heroSpecials} />
           
           <MenuSection 
@@ -300,11 +326,29 @@ export default function App() {
             highlightedCategory={highlightedCategory}
           />
 
+          <ReviewSection />
+
           <footer className="p-10 border-t border-border-dim bg-card flex flex-col items-center gap-6">
             <div className="flex gap-8 text-[10px] font-black uppercase tracking-[0.2em] text-secondary">
-              <a href="#menu" className="hover:text-accent transition-colors">Menu</a>
+              <button 
+                onClick={() => {
+                  const el = document.getElementById('menu');
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }} 
+                className="hover:text-accent transition-colors"
+              >
+                Menu
+              </button>
               <button onClick={() => setIsAssistantOpen(true)} className="lg:hidden hover:text-accent transition-colors">AI WAITRESS</button>
-              <a href="#" className="hover:text-accent transition-colors">Back to Top</a>
+              <button 
+                onClick={() => {
+                  const el = document.querySelector('main');
+                  el?.scrollTo({ top: 0, behavior: 'smooth' });
+                }} 
+                className="hover:text-accent transition-colors"
+              >
+                Back to Top
+              </button>
             </div>
             <p className="text-[10px] text-secondary font-medium tracking-widest opacity-30">
               © 2026 THE BRIDGE • 1117 ELM STREET, MANCHESTER NH
@@ -314,8 +358,8 @@ export default function App() {
 
         {/* Right Sidebar: AI Assistant (Fixed on desktop, Slider on mobile) */}
         <div className={cn(
-          "transition-all duration-500 overflow-hidden bg-card border-l border-border-dim shadow-2xl z-40",
-          "fixed right-0 top-16 bottom-0 w-[85%] sm:w-[400px]",
+          "transition-all duration-500 overflow-visible bg-card border-l border-border-dim shadow-2xl z-40",
+          "fixed right-0 top-16 bottom-0 w-[92%] sm:w-[400px]",
           "lg:fixed lg:inset-y-0 lg:top-16 lg:right-0",
           isAssistantOpen ? "translate-x-0" : "translate-x-full"
         )}>

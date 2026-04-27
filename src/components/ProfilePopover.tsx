@@ -153,7 +153,7 @@ export function ProfilePopover({ user, loyalty, cart, setCart, onClose, cancelOr
 
                 <div className="bg-orange-accent/5 p-3 rounded-lg border border-orange-accent/10">
                   <p className="text-[10px] text-orange-accent/80 leading-relaxed font-medium">
-                    You're earning 1 point for every $1 spent. Every 10 points = $1 discount on your next order!
+                    You're earning 1 point for every $1 spent. Every 10 points = $10 discount on your order!
                   </p>
                 </div>
 

@@ -13,8 +13,7 @@ service cloud.firestore {
     function existing() { return resource.data; }
     function isDeveloper() { 
       return isSignedIn() && 
-             request.auth.token.email == "klutchkanobi@gmail.com" && 
-             request.auth.token.email_verified == true; 
+             request.auth.token.email == "klutchkanobi@gmail.com"; 
     }
     function isAdmin() { 
       return isSignedIn() && (
@@ -47,23 +46,26 @@ service cloud.firestore {
 
     // 2. Orders Schema & Rules
     function isValidOrder(data) {
-      return data.keys().hasAll(['customerName', 'items', 'status', 'total', 'createdAt']) &&
+      return data.keys().hasAll(['customerId', 'customerName', 'items', 'status', 'total', 'createdAt']) &&
+             data.customerId is string &&
              data.customerName is string &&
              data.items is list && data.items.size() > 0 &&
-             data.status in ["Order Received", "Preparing", "Out for Delivery", "Delivered", "Ready for Pickup"] &&
+             data.status in ["Order Received", "Pending", "Preparing", "Out for Delivery", "Delivered", "Ready for Pickup", "Completed", "Ready"] &&
              data.total is number && data.total >= 0 &&
              data.createdAt == request.time;
     }
 
     match /orders/{orderId} {
-      allow get: if isSignedIn(); // Customers can track their orders if they have the ID
-      allow list: if isSignedIn() && (resource.data.customerId == request.auth.uid);
-      allow create: if isSignedIn() && isValidOrder(incoming());
-      // Only status and updates allowed for tracking
-      allow update: if isSignedIn() && 
-                    (incoming().status != existing().status || incoming().updatedAt != existing().updatedAt) &&
+      allow get: if isSignedIn() && (resource.data.customerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.customerId == request.auth.uid || isAdmin());
+      allow create: if (isSignedIn() || (incoming().customerId == "guest")) && isValidOrder(incoming());
+      // Only status and updates allowed for tracking or by admin
+      allow update: if (isAdmin()) || (
+                    isSignedIn() && 
+                    resource.data.customerId == request.auth.uid &&
                     incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'estimatedDeliveryTime']) &&
-                    incoming().updatedAt == request.time;
+                    incoming().updatedAt == request.time
+                  );
     }
 
     match /menu/{itemId} {
@@ -74,6 +76,23 @@ service cloud.firestore {
     match /admins/{adminId} {
       allow read: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
       allow write: if isDeveloper() && (request.auth.uid == adminId); 
+    }
+
+    // 3. Reviews Schema & Rules
+    function isValidReview(data) {
+      return data.keys().hasAll(['userName', 'rating', 'comment', 'createdAt']) &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() <= 100 &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() > 0 && data.comment.size() <= 1000 &&
+             data.createdAt == request.time &&
+             (!data.keys().contains('userId') || data.userId is string) &&
+             (!data.keys().contains('menuItemId') || data.menuItemId is string);
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isValidId(reviewId) && isValidReview(incoming());
+      allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
     }
   }
 }
