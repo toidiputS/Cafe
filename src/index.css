@@ -27,6 +27,29 @@
     background-color: var(--color-bg);
     color: var(--color-primary);
     overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* PWA/Mobile optimizations */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    .pwa-safe-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+
+  /* Improve button touch feedback */
+  button:active {
+    transform: scale(0.98);
+  }
+
+  /* Hide scrollbars but keep functionality for a cleaner app look */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
   /* Custom Modern Scrollbar */

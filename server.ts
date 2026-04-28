@@ -26,6 +26,11 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Health check
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
+
   // Payment Intent API
   app.post("/api/create-payment-intent", async (req, res) => {
     try {

@@ -9,6 +9,7 @@ import { Hero } from "./components/Hero";
 import { MenuSection } from "./components/MenuSection";
 import { Receptionist } from "./components/Receptionist";
 import { SidebarInfo } from "./components/SidebarInfo";
+import { MobileBottomNav } from "./components/MobileBottomNav";
 import { MENU, type MenuItem, CATEGORY_METADATA, SUBCATEGORY_ORDER } from "./data/menu";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
@@ -396,7 +397,7 @@ export default function App() {
 
         {/* Right Sidebar: AI Assistant (Fixed on desktop, Slider on mobile) */}
         <div className={cn(
-          "transition-all duration-500 overflow-visible bg-card border-l border-border-dim shadow-2xl z-40",
+          "transition-all duration-500 overflow-visible bg-card border-l border-border-dim shadow-2xl z-[110]",
           "fixed right-0 top-16 bottom-0 w-[92%] sm:w-[400px]",
           "lg:fixed lg:inset-y-0 lg:top-16 lg:right-0",
           isAssistantOpen ? "translate-x-0" : "translate-x-full"
@@ -422,6 +423,12 @@ export default function App() {
             lastInteraction={lastInteraction}
           />
         </div>
+
+        <MobileBottomNav 
+          onToggleAssistant={() => setIsAssistantOpen(!isAssistantOpen)} 
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          activeSection={highlightedCategory || ""}
+        />
  
         <AnimatePresence>
           {clientSecret && (
