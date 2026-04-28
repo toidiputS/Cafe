@@ -19,7 +19,7 @@ export function Header({ isAdmin, user, onOpenAdmin, categories, isSidebarOpen, 
   const [showDropdown, setShowDropdown] = useState<string | null>(null);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-bg/80 backdrop-blur-md border-b border-border-dim/50">
+    <header aria-label="Main Navigation" className="fixed top-0 left-0 right-0 z-50 bg-bg/80 backdrop-blur-md border-b border-border-dim/50 pwa-safe-top">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between relative">
         <div className="flex items-center gap-4">
           <button 

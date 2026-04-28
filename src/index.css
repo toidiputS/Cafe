@@ -36,11 +36,25 @@
     .pwa-safe-bottom {
       padding-bottom: env(safe-area-inset-bottom);
     }
+    .pwa-safe-top {
+      padding-top: env(safe-area-inset-top);
+    }
   }
 
-  /* Improve button touch feedback */
+  /* Improve button touch feedback and prevent long-press context menus on UI buttons */
+  button {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
   button:active {
-    transform: scale(0.98);
+    transform: scale(0.96);
+  }
+
+  /* Smooth scrolling for the whole app */
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   /* Hide scrollbars but keep functionality for a cleaner app look */
@@ -50,6 +64,17 @@
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Hide scrollbars globally on mobile but keep on desktop if needed */
+  @media (max-width: 768px) {
+    body {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    body::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   /* Custom Modern Scrollbar */

@@ -19,7 +19,7 @@ export function MobileBottomNav({ onToggleAssistant, onToggleSidebar, activeSect
   };
 
   return (
-    <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-48px)] max-w-sm">
+    <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-48px)] max-w-sm pwa-safe-bottom">
       <div className="bg-bg/90 backdrop-blur-xl border border-border-dim/50 rounded-full h-16 flex items-center justify-around px-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
         <button 
           onClick={scrollToTop}

@@ -312,7 +312,7 @@ export default function App() {
   const heroSpecials = useMemo(() => sortedMenu.filter(m => m.isSpecial).slice(0, 3), [sortedMenu]);
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-bg font-sans selection:bg-orange-accent/30 selection:text-orange-accent pt-16 overflow-x-hidden relative">
+    <div id="app-container" className="min-h-screen min-h-[100dvh] bg-bg font-sans selection:bg-orange-accent/30 selection:text-orange-accent pt-16 overflow-x-hidden relative">
       <Header 
         isAdmin={isAdmin} 
         user={user} 
@@ -347,7 +347,7 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: -320 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-16 bottom-0 w-[320px] bg-bg border-r border-border-dim overflow-y-auto custom-scrollbar z-50 shadow-[20px_0_50px_rgba(0,0,0,0.5)]"
+              className="fixed left-0 top-16 bottom-0 w-[320px] bg-bg border-r border-border-dim overflow-y-auto custom-scrollbar z-50 shadow-[20px_0_50px_rgba(0,0,0,0.5)] pwa-safe-top"
             >
               <SidebarInfo isAdmin={isAdmin} user={user} onOpenAdmin={() => setShowAdminPanel(true)} onClose={() => setIsSidebarOpen(false)} />
             </motion.div>
@@ -355,19 +355,21 @@ export default function App() {
         </AnimatePresence>
 
         {/* Center: Hero & Menu */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar border-r border-border-dim">
-          <Hero isFullHeight={isSidebarOpen} specials={heroSpecials} />
-          
-          <MenuSection 
-            menu={sortedMenu}
-            onOrder={addToCart} 
-            highlightedItemId={highlightedItemId} 
-            highlightedCategory={highlightedCategory}
-          />
+        <div className="flex-1 overflow-visible border-r border-border-dim flex flex-col">
+          <main id="main-content" aria-label="Menu and Featured Items" className="flex-1 overflow-y-auto custom-scrollbar pwa-safe-bottom">
+            <Hero isFullHeight={isSidebarOpen} specials={heroSpecials} />
+            
+            <MenuSection 
+              menu={sortedMenu}
+              onOrder={addToCart} 
+              highlightedItemId={highlightedItemId} 
+              highlightedCategory={highlightedCategory}
+            />
 
-          <ReviewSection />
+            <ReviewSection />
+          </main>
 
-          <footer className="p-10 border-t border-border-dim bg-card flex flex-col items-center gap-6">
+          <footer aria-label="Contact and Legal Information" className="p-10 pb-32 md:pb-10 border-t border-border-dim bg-card flex flex-col items-center gap-6 pwa-safe-bottom">
             <div className="flex gap-8 text-[10px] font-black uppercase tracking-[0.2em] text-secondary">
               <button 
                 onClick={() => {
@@ -393,7 +395,7 @@ export default function App() {
               © 2026 THE BRIDGE • 1117 ELM STREET, MANCHESTER NH
             </p>
           </footer>
-        </main>
+        </div>
 
         {/* Right Sidebar: AI Assistant (Fixed on desktop, Slider on mobile) */}
         <div className={cn(

@@ -153,18 +153,18 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 10 }}
-        className="relative w-full max-w-6xl h-[85vh] bg-[#121212] border border-white/10 rounded-2xl shadow-[0_30px_90px_rgba(0,0,0,0.8)] flex overflow-hidden"
+        className="relative w-full max-w-6xl h-[95dvh] lg:h-[85vh] bg-[#121212] border border-white/10 rounded-2xl shadow-[0_30px_90px_rgba(0,0,0,0.8)] flex overflow-hidden pwa-safe-top pwa-safe-bottom"
       >
         {/* Sidebar Navigation */}
-        <aside className="w-20 lg:w-64 border-r border-white/10 flex flex-col bg-[#0a0a0a]">
-          <div className="p-6 border-b border-white/10 flex items-center gap-3">
-            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
+        <aside aria-label="Admin Navigation" className="w-16 lg:w-64 border-r border-white/10 flex flex-col bg-[#0a0a0a]">
+          <div className="p-4 lg:p-6 border-b border-white/10 flex items-center gap-3">
+            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center shrink-0">
               <ChefHat className="w-5 h-5 text-bg" />
             </div>
             <span className="hidden lg:block font-display font-black text-accent tracking-tighter uppercase text-lg">Control</span>
           </div>
 
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-2 lg:p-4 space-y-1 lg:space-y-2">
             {[
               { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
               { id: "orders", icon: ShoppingBag, label: "Live Orders", badge: dashboardStats.pendingCount },
@@ -175,14 +175,15 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as Tab)}
                 className={cn(
-                  "w-full flex items-center gap-4 p-4 rounded-xl transition-all group relative",
+                  "w-full flex items-center gap-4 p-3 lg:p-4 rounded-xl transition-all group relative",
                   activeTab === tab.id ? "bg-accent text-bg shadow-lg shadow-accent/20" : "hover:bg-white/5 text-secondary"
                 )}
+                title={tab.label}
               >
-                <tab.icon className={cn("w-5 h-5", activeTab === tab.id ? "text-bg" : "group-hover:text-white")} />
-                <span className="hidden lg:block font-bold text-xs uppercase tracking-widest">{tab.label}</span>
+                <tab.icon className={cn("w-5 h-5 shrink-0", activeTab === tab.id ? "text-bg" : "group-hover:text-white")} />
+                <span className="hidden lg:block font-bold text-xs uppercase tracking-widest truncate">{tab.label}</span>
                 {tab.badge !== undefined && tab.badge > 0 && activeTab !== tab.id && (
-                  <span className="absolute top-2 right-2 flex h-2 w-2">
+                  <span className="absolute top-1 right-1 lg:top-2 lg:right-2 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                   </span>
@@ -191,13 +192,13 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
             ))}
           </nav>
 
-          <div className="p-6 border-t border-white/10">
+          <div className="p-4 lg:p-6 border-t border-white/10 font-black">
             <button 
               onClick={onClose}
-              className="w-full flex items-center justify-center gap-3 p-3 text-secondary hover:text-white transition-colors text-[10px] font-black uppercase tracking-widest"
+              className="w-full flex items-center justify-center gap-3 p-3 text-secondary hover:text-red-500 transition-colors text-[10px] font-black uppercase tracking-widest"
             >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden lg:block">Exit Panel</span>
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span className="hidden lg:block">Exit</span>
             </button>
           </div>
         </aside>
@@ -205,19 +206,19 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
         {/* Main Workspace */}
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          <header className="h-16 border-b border-white/10 flex items-center justify-between px-8 bg-[#0d0d0d]">
-            <h3 className="font-display font-black text-xs uppercase tracking-[0.2em] text-secondary">
-              {activeTab} view
+          <header className="h-16 border-b border-white/10 flex items-center justify-between px-4 lg:px-8 bg-[#0d0d0d] shrink-0">
+            <h3 className="font-display font-black text-[10px] uppercase tracking-[0.2em] text-secondary truncate mr-2">
+              {activeTab}
             </h3>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/10">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-black uppercase text-secondary">Kitchen Live</span>
+                <span className="hidden sm:inline text-[9px] font-black uppercase text-secondary">Kitchen Live</span>
               </div>
             </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8">
             {activeTab === "dashboard" && (
               <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

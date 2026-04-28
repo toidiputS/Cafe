@@ -764,9 +764,9 @@ export function Receptionist({
   const { subtotal, total, gratuity } = calculateTotal();
 
   return (
-    <section className="h-full flex flex-col bg-card relative overflow-hidden">
+    <aside aria-label="AI Order Assistant" className="h-full flex flex-col bg-card relative overflow-hidden pwa-safe-top">
       {/* Waitress Header */}
-      <div className="p-3 border-b border-border-dim bg-bg/50 backdrop-blur-md flex items-center justify-between z-50">
+      <div className="p-3 border-b border-border-dim bg-bg/50 backdrop-blur-md flex items-center justify-between z-50 pwa-safe-top">
         <div className="flex items-center gap-2">
           <div className="relative">
             <div className="w-8 h-8 rounded-lg bg-orange-accent/10 flex items-center justify-center">
@@ -1093,6 +1093,6 @@ export function Receptionist({
           )}
         </AnimatePresence>
       </div>
-    </section>
+    </aside>
   );
 }
