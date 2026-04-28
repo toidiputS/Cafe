@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Check, ShoppingCart, Info } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { MenuItem, CATEGORY_METADATA } from '../data/menu';
+import Markdown from 'react-markdown';
 
 interface ItemCustomizerModalProps {
   item: MenuItem | null;
@@ -14,64 +15,94 @@ export function ItemCustomizerModal({ item, onClose, onAdd }: ItemCustomizerModa
   const [quantity, setQuantity] = useState(1);
   const [selectedSizeIdx, setSelectedSizeIdx] = useState<number>(0);
   const [selectedBread, setSelectedBread] = useState<string>("");
+  const [selectedBagelType, setSelectedBagelType] = useState<string>("");
+  const [selectedFlavor, setSelectedFlavor] = useState<string>("");
   const [selectedSide, setSelectedSide] = useState<string>("");
+  const [selectedOption, setSelectedOption] = useState<string>("");
+  const [selectedToast, setSelectedToast] = useState<string>("");
+  const [selectedMeat, setSelectedMeat] = useState<string>("");
+  const [selectedEggStyle, setSelectedEggStyle] = useState<string>("");
+  const [selectedSweet, setSelectedSweet] = useState<string>("");
   const [customNotes, setCustomNotes] = useState("");
 
   if (!item) return null;
 
   const currentPrice = Array.isArray(item.price) ? item.price[selectedSizeIdx] : item.price;
-  const sizeLabels = ["Small", "Medium", "Large"];
+  const sizeLabels = (item.options && Array.isArray(item.price) && item.options.length === item.price.length) 
+    ? item.options 
+    : ["Small", "Medium", "Large"];
 
   const catMeta = CATEGORY_METADATA[item.category];
   const isLunch = item.category === "Lunch";
   const isBreakfast = item.category === "Breakfast";
+  const isBagelSubcat = item.subcategory === "Bagels and Spreads";
   const isBagelWithCC = item.id === "b-bag-cc";
-  const isBagelToast = item.id === "b-bag-toast";
+  const isBagelPBJ = item.id === "b-bag-pbj" || item.id === "b-bag-jelly";
   const isBreakfastSandwich = item.subcategory === "Breakfast Sandwiches";
   const isEggStyle = item.subcategory === "Eggs Any Style";
   const isOmelette = item.subcategory === "Omelettes";
   const isBurrito = item.subcategory === "Breakfast Burritos";
+  const isSalad = item.subcategory === "Freshly Tossed Salads";
+
+  const bagelOptions = ["Plain", "Sesame", "Everything", "Cinnamon Raisin", "Asiago", "Wheat", "Onion"];
+  const ccFlavorOptions = ["Plain", "Vegetable", "Pesto", "Honey Walnut", "Chive", "Strawberry", "Jalapeno"];
+  const jellyOptions = ["Grape", "Strawberry"];
+
+  const toastOptions = ["White Toast", "Wheat Toast", "Rye Toast"];
+  const eggStyleOptions = ["Scrambled", "Fried", "Over Easy", "Over Medium", "Over Hard", "Poached", "Sunny Side Up"];
+  const breakfastMeatOptions = ["Ham", "Bacon", "Sausage"];
 
   let breadOptions: string[] = [];
   let headerLabel = "Choose Options";
 
-  if (isLunch) {
+  if (isLunch && !isSalad) {
     breadOptions = ["White", "Wheat", "Rye", "Rosemary Focaccia", "White Wrap", "Wheat Wrap", "Sun-Dried Tomato Wrap"];
     headerLabel = "Choose Bread or Wrap";
-  } else if (isBagelWithCC) {
-    breadOptions = ["Plain CC", "Vegetable CC", "Pesto CC", "Honey Walnut CC", "Chive CC", "Strawberry CC", "Jalapeno CC"];
-    headerLabel = "Choose Cream Cheese Flavor";
-  } else if (isBagelToast) {
-    breadOptions = ["Plain", "Sesame", "Everything", "Cinnamon Raisin", "Asiago", "Wheat", "Onion"];
-    headerLabel = "Choose Bagel Type";
   } else if (isBreakfastSandwich) {
     breadOptions = ["White", "Wheat", "Rye", "Plain Bagel", "Sesame Bagel", "Everything Bagel", "English Muffin", "Croissant"];
     headerLabel = "Choose Bread/Bagel";
-  } else if (isEggStyle) {
-    breadOptions = ["Scrambled", "Fried", "Over Easy", "Over Medium", "Over Hard", "Poached", "Sunny Side Up"];
-    headerLabel = "Choose Egg Style";
-  } else if (isOmelette) {
-    breadOptions = ["White Toast", "Wheat Toast", "Rye Toast"];
-    headerLabel = "Choose Toast Type";
   } else if (isBurrito) {
     breadOptions = ["White Wrap", "Wheat Wrap", "Sun-Dried Tomato Wrap"];
     headerLabel = "Choose Wrap Type";
   }
 
-  const sideOptions = isLunch ? ["Pasta salad", "Potato salad", "Cafe salad", "Fruit salad", "Chips"] : [];
+  const sideOptions = (isLunch && !isSalad) 
+    ? ["Pasta salad", "Potato salad", "Cafe salad", "Fruit salad", "Chips"] 
+    : (isBreakfast && (item.id === "b-bag-salmon-plate" || isEggStyle || isOmelette || item.id === "b-egg-hungry"))
+      ? ["Home Fries", "Fruit Cup"]
+      : [];
 
   const handleAdd = () => {
     let optionsList = [];
+    if (selectedBagelType) optionsList.push(`Bagel: ${selectedBagelType}`);
+    if (selectedFlavor) optionsList.push(`Flavor: ${selectedFlavor}`);
+    if (selectedOption) optionsList.push(`Choice: ${selectedOption}`);
+    if (selectedEggStyle) optionsList.push(`Egg Style: ${selectedEggStyle}`);
+    if (selectedMeat) optionsList.push(`Meat: ${selectedMeat}`);
+    if (selectedToast) optionsList.push(`Toast: ${selectedToast}`);
+    if (selectedSweet) optionsList.push(`Sweet Side: ${selectedSweet}`);
     if (selectedBread) {
-      if (isBagelWithCC) optionsList.push(`Flavor: ${selectedBread}`);
-      else if (isEggStyle) optionsList.push(`Style: ${selectedBread}`);
-      else optionsList.push(`Choice: ${selectedBread}`);
+      optionsList.push(`Choice: ${selectedBread}`);
     }
     if (selectedSide) optionsList.push(`Side: ${selectedSide}`);
     
     onAdd(item, quantity, optionsList.join(", "), customNotes, currentPrice);
     onClose();
   };
+
+  const hasGeneralOptions = item.options && (!Array.isArray(item.price) || item.options.length !== item.price.length);
+
+  const isAddDisabled = 
+    (breadOptions.length > 0 && !selectedBread) || 
+    (sideOptions.length > 0 && !selectedSide) ||
+    (isBagelSubcat && !selectedBagelType) ||
+    (isBagelWithCC && !selectedFlavor) ||
+    (isBagelPBJ && !selectedFlavor) ||
+    (hasGeneralOptions && !selectedOption) ||
+    (isEggStyle && !selectedEggStyle) ||
+    ((isEggStyle || isOmelette) && !selectedToast) ||
+    ((item.id === "b-egg-hungry" || item.id === "b-egg-2-meat") && !selectedMeat) ||
+    (item.id === "b-egg-hungry" && !selectedSweet);
 
   return (
     <AnimatePresence>
@@ -94,11 +125,13 @@ export function ItemCustomizerModal({ item, onClose, onAdd }: ItemCustomizerModa
             <div className="p-6 border-b border-white/5 flex justify-between items-start">
               <div>
                 <h3 className="text-2xl font-display italic text-white leading-none mb-2">{item.name}</h3>
-                <p className="text-[10px] font-black uppercase tracking-widest text-accent">
-                  {Array.isArray(item.price) 
-                    ? item.price.map(p => `$${p.toFixed(2)}`).join(", ")
-                    : `$${item.price.toFixed(2)}`}
-                </p>
+                {item.category !== "Catering" && (
+                  <p className="text-[10px] font-black uppercase tracking-widest text-accent">
+                    {Array.isArray(item.price) 
+                      ? item.price.map(p => `$${p.toFixed(2)}`).join(", ")
+                      : item.price === 0 ? "Call for Pricing" : `$${item.price.toFixed(2)}`}
+                  </p>
+                )}
               </div>
               <button 
                 onClick={onClose}
@@ -113,7 +146,9 @@ export function ItemCustomizerModal({ item, onClose, onAdd }: ItemCustomizerModa
               {item.description && (
                 <div className="bg-white/5 p-4 rounded-2xl flex gap-3">
                   <Info size={16} className="text-secondary shrink-0 mt-0.5" />
-                  <p className="text-xs text-secondary leading-relaxed italic">{item.description}</p>
+                  <div className="text-xs text-secondary leading-relaxed italic markdown-body">
+                    <Markdown>{item.description}</Markdown>
+                  </div>
                 </div>
               )}
 
@@ -141,8 +176,192 @@ export function ItemCustomizerModal({ item, onClose, onAdd }: ItemCustomizerModa
                 </div>
               )}
 
+              {/* General Options (e.g. Toppings, Choices) */}
+              {hasGeneralOptions && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-secondary">Choose an Option</label>
+                    <span className="text-[9px] font-bold text-accent px-2 py-0.5 bg-accent/10 rounded uppercase">Required</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {item.options?.map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setSelectedOption(opt)}
+                        className={cn(
+                          "px-4 py-3 rounded-xl text-[11px] font-bold text-left transition-all border",
+                          selectedOption === opt 
+                            ? "bg-accent border-accent text-bg" 
+                            : "bg-white/5 border-white/10 text-secondary hover:border-white/20"
+                        )}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bagel Type Selection */}
+              {isBagelSubcat && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-secondary">Choose Bagel Type</label>
+                    <span className="text-[9px] font-bold text-accent px-2 py-0.5 bg-accent/10 rounded uppercase">Required</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {bagelOptions.map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setSelectedBagelType(type)}
+                        className={cn(
+                          "px-4 py-3 rounded-xl text-[11px] font-bold text-left transition-all border",
+                          selectedBagelType === type 
+                            ? "bg-accent border-accent text-bg" 
+                            : "bg-white/5 border-white/10 text-secondary hover:border-white/20"
+                        )}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Egg Style Selection */}
+              {isEggStyle && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-secondary">Choose Egg Style</label>
+                    <span className="text-[9px] font-bold text-accent px-2 py-0.5 bg-accent/10 rounded uppercase">Required</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {eggStyleOptions.map((style) => (
+                      <button
+                        key={style}
+                        onClick={() => setSelectedEggStyle(style)}
+                        className={cn(
+                          "px-4 py-3 rounded-xl text-[11px] font-bold text-left transition-all border",
+                          selectedEggStyle === style 
+                            ? "bg-accent border-accent text-bg" 
+                            : "bg-white/5 border-white/10 text-secondary hover:border-white/20"
+                        )}
+                      >
+                        {style}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Meat Choice Selection */}
+              {(item.id === "b-egg-hungry" || item.id === "b-egg-2-meat") && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-secondary">Choose Meat</label>
+                    <span className="text-[9px] font-bold text-accent px-2 py-0.5 bg-accent/10 rounded uppercase">Required</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {breakfastMeatOptions.map((meat) => (
+                      <button
+                        key={meat}
+                        onClick={() => setSelectedMeat(meat)}
+                        className={cn(
+                          "px-4 py-3 rounded-xl text-[11px] font-bold text-left transition-all border",
+                          selectedMeat === meat 
+                            ? "bg-accent border-accent text-bg" 
+                            : "bg-white/5 border-white/10 text-secondary hover:border-white/20"
+                        )}
+                      >
+                        {meat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pancakes or French Toast Selection for Hungry Man */}
+              {item.id === "b-egg-hungry" && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-secondary">Choose Pancakes or French Toast</label>
+                    <span className="text-[9px] font-bold text-accent px-2 py-0.5 bg-accent/10 rounded uppercase">Required</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["Pancakes", "French Toast"].map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setSelectedSweet(opt)}
+                        className={cn(
+                          "px-4 py-3 rounded-xl text-[11px] font-bold text-left transition-all border",
+                          selectedSweet === opt 
+                            ? "bg-accent border-accent text-bg" 
+                            : "bg-white/5 border-white/10 text-secondary hover:border-white/20"
+                        )}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Toast Selection */}
+              {(isEggStyle || isOmelette) && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-secondary">Choose Toast</label>
+                    <span className="text-[9px] font-bold text-accent px-2 py-0.5 bg-accent/10 rounded uppercase">Required</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {toastOptions.map((toast) => (
+                      <button
+                        key={toast}
+                        onClick={() => setSelectedToast(toast)}
+                        className={cn(
+                          "px-4 py-3 rounded-xl text-[11px] font-bold text-left transition-all border",
+                          selectedToast === toast 
+                            ? "bg-accent border-accent text-bg" 
+                            : "bg-white/5 border-white/10 text-secondary hover:border-white/20"
+                        )}
+                      >
+                        {toast}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Flavor Selection (CC or Jelly) */}
+              {(isBagelWithCC || isBagelPBJ) && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-secondary">
+                      {isBagelWithCC ? "Choose Cream Cheese Flavor" : "Choose Jelly Flavor"}
+                    </label>
+                    <span className="text-[9px] font-bold text-accent px-2 py-0.5 bg-accent/10 rounded uppercase">Required</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(isBagelWithCC ? ccFlavorOptions : jellyOptions).map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setSelectedFlavor(opt)}
+                        className={cn(
+                          "px-4 py-3 rounded-xl text-[11px] font-bold text-left transition-all border",
+                          selectedFlavor === opt 
+                            ? "bg-accent border-accent text-bg" 
+                            : "bg-white/5 border-white/10 text-secondary hover:border-white/20"
+                        )}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Bread / Base Selection */}
-              {breadOptions.length > 0 ? (
+              {breadOptions.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex justify-between items-end">
                     <label className="text-[10px] font-black uppercase tracking-widest text-secondary">{headerLabel}</label>
@@ -165,19 +384,20 @@ export function ItemCustomizerModal({ item, onClose, onAdd }: ItemCustomizerModa
                     ))}
                   </div>
                 </div>
-              ) : (
-                item.category === "Coffee" || item.category === "Espresso" ? (
-                  <div className="space-y-4">
-                     <label className="text-[10px] font-black uppercase tracking-widest text-secondary">Milk / Flavor Preference</label>
-                     <input 
-                       type="text" 
-                       placeholder="e.g. Oat milk, Extra shot, Vanilla syrup..."
-                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-accent transition-colors"
-                       value={selectedBread}
-                       onChange={(e) => setSelectedBread(e.target.value)}
-                     />
-                  </div>
-                ) : null
+              )}
+
+              {/* Milk / Flavor Preference for drinks */}
+              {(item.category === "Coffee" || item.category === "Espresso" || item.subcategory === "Espresso Drinks" || item.subcategory === "Coffee") && (
+                <div className="space-y-4">
+                   <label className="text-[10px] font-black uppercase tracking-widest text-secondary">Milk / Flavor Preference</label>
+                   <input 
+                     type="text" 
+                     placeholder="e.g. Oat milk, Extra shot, Vanilla syrup..."
+                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-accent transition-colors"
+                     value={selectedBread}
+                     onChange={(e) => setSelectedBread(e.target.value)}
+                   />
+                </div>
               )}
 
               {/* Side Selection */}
@@ -244,11 +464,13 @@ export function ItemCustomizerModal({ item, onClose, onAdd }: ItemCustomizerModa
               </button>
               <button 
                 onClick={handleAdd}
-                disabled={(breadOptions.length > 0 && !selectedBread) || (sideOptions.length > 0 && !selectedSide)}
+                disabled={isAddDisabled}
                 className="flex-[2] bg-accent text-bg py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 hover:bg-orange-accent disabled:opacity-30 disabled:grayscale"
               >
                 <ShoppingCart size={16} />
-                Add to Order — ${(currentPrice * quantity).toFixed(2)}
+                {currentPrice === 0 
+                  ? "Add to Order" 
+                  : `Add to Order — $${(currentPrice * quantity).toFixed(2)}`}
               </button>
             </div>
           </motion.div>

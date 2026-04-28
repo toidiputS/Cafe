@@ -43,7 +43,7 @@ interface ReceptionistProps {
   menu: MenuItem[];
   cart: CartItem[];
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
-  addToCart: (itemName: string, quantity?: number, options?: string, customizations?: string) => string;
+  addToCart: (itemName: string, quantity?: number, options?: string, customizations?: string, price?: number) => string;
   removeFromCart: (itemName: string) => string;
   highlightMenuItem: (itemName: string) => string;
   highlightCategory: (categoryName: string) => string;
@@ -53,6 +53,7 @@ interface ReceptionistProps {
   isDelivery: boolean;
   setIsDelivery: React.Dispatch<React.SetStateAction<boolean>>;
   onInitPayment: (amount: number) => void;
+  onPaymentSuccess?: (callback: (orderId: string) => void) => void;
   isCartOpen: boolean;
   setIsCartOpen: React.Dispatch<React.SetStateAction<boolean>>;
   onClose?: () => void;
@@ -73,6 +74,7 @@ export function Receptionist({
   isDelivery,
   setIsDelivery,
   onInitPayment,
+  onPaymentSuccess,
   isCartOpen,
   setIsCartOpen,
   onClose,
@@ -81,8 +83,8 @@ export function Receptionist({
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "bot", 
-      content: "Hello! Welcome to **The Bridge Cafe**. I'm your AI Waitress.\n\nAt The Bridge Café on Elm, we prepare everything in-house with only the freshest ingredients, herbs, and spices. Breakfast is served all day!\n\nWhat can I get started for you today?",
-      suggestions: ["Daily Specials", "Weekly Specials", "Homemade Soups", "Breakfast Menu", "Lunch Menu", "Desserts & Drinks"] 
+      content: "Hello! Welcome to **The Bridge Café**. I'm your AI Waitress.\n\nAt The Bridge Café on Elm, we prepare everything in-house with only the freshest ingredients, herbs, and spices. Breakfast is served all day!\n\nWhat can I get started for you today?",
+      suggestions: ["Weekly Specials", "Homemade Soups", "Breakfast Menu", "Lunch Menu", "Desserts & Drinks"] 
     }
   ]);
 
@@ -213,12 +215,16 @@ export function Receptionist({
             ITEM DETAILS: ${menuItem ? JSON.stringify(menuItem) : "N/A"}
             CATEGORY CONTEXT: ${catMeta ? JSON.stringify(catMeta) : "N/A"}
             
-            ROLE: You are an expert waitress at The Bridge Cafe. 
+            ROLE: You are an expert waitress at The Bridge Café. 
             TASK: Ask the user for their required options (bread type, side, flavor, etc.) based on the ITEM DETAILS and CATEGORY CONTEXT.
             Guidelines:
-            - If Lunch sandwich: Ask for Bread Choice (White, Wheat, Rye, Focaccia) AND Side Choice (Pasta salad, Potato salad, Cafe salad, Fruit salad, Chips).
+            - If Lunch sandwich: Ask for Bread Choice (White, Wheat, Rye, Focaccia) AND Side Choice (Pasta salad, Potato salad, Café salad, Fruit salad, Chips).
             - If Breakfast Sandwich: Ask for Bread Choice (Bread, Bagel, English Muffin, Croissant).
-            - If Bagel: Ask for Bagel choice and Spread choice if applicable.
+            - If Bagel: 
+                * ALWAYS ask for Bagel Choice (Plain, Sesame, Everything, Cinnamon Raisin, Asiago, Wheat, Onion).
+                * If Cream Cheese: Ask for flavor (Plain, Vegetable, Pesto, Honey Walnut, Chive, Strawberry, Jalapeno).
+                * If PB & Jelly: Ask for Jelly choice (Grape or Strawberry).
+            - If Soup: Ask for Size choice (Small or Large).
             - If Coffee/Espresso: Ask about milk choice or flavors.
             
             TONE: Extremely natural, conversational, brief, and friendly. 
@@ -267,6 +273,46 @@ export function Receptionist({
   const [lastPlacedOrder, setLastPlacedOrder] = useState<any>(null);
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (onPaymentSuccess) {
+      onPaymentSuccess(async (paymentIntentId) => {
+        const { total } = calculateTotal();
+        const orderData = {
+          customerId: user?.uid || "guest",
+          customerName: user?.displayName || "Guest Customer",
+          items: [...cart],
+          status: "Paid",
+          paymentIntentId,
+          kitchenNotified: true,
+          total,
+          discount,
+          isDelivery,
+          deliveryAddress,
+          createdAt: serverTimestamp(),
+          estimatedDeliveryTime: new Date(Date.now() + 45 * 60 * 1000).toISOString()
+        };
+        const orderRef = await addDoc(collection(db, "orders"), orderData);
+        setLastPlacedOrder({ id: orderRef.id, ...orderData });
+        
+        if (user && loyalty) {
+          const pointsEarned = Math.floor(total);
+          const pointsToDeduct = discount * 10;
+          await updateDoc(doc(db, "customers", user.uid), {
+            loyaltyPoints: Math.max(0, loyalty.loyaltyPoints - pointsToDeduct + pointsEarned),
+            updatedAt: serverTimestamp()
+          });
+          await fetchLoyaltyProfile(user.uid);
+        }
+        
+        setCart([]);
+        setDiscount(0);
+        setIsDelivery(false);
+        setDeliveryAddress("");
+        setMessages(prev => [...prev, { role: "bot", content: "Payment successful! Your order has been sent to the kitchen." }]);
+      });
+    }
+  }, [onPaymentSuccess, cart, isDelivery, deliveryAddress, user, loyalty, discount]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -381,7 +427,7 @@ export function Receptionist({
           { role: "user", parts: [{ text: userMsg }] }
         ],
         config: {
-          systemInstruction: `You are a professional AI Waitress for The Bridge Cafe. 
+          systemInstruction: `You are a professional AI Waitress for The Bridge Café. 
           Business Info: ${JSON.stringify(BUSINESS_INFO)}
           Address: 1117 Elm Street, Manchester, NH 03101 (Next to Anthem)
           Hours: 6am-5pm Mon-Fri, 6am-4pm Sat & Sun. Breakfast served all day!
@@ -392,22 +438,29 @@ export function Receptionist({
           Loyalty Status: ${JSON.stringify(loyalty)}
           Guidelines:
           1. WAITRESS BRAIN: You are an efficient waitress. Your job is to guide users to the menu board (the main UI) and then handle the details.
-          2. DAILY SPECIALS: We have a dedicated 'Daily Specials' section. ALWAYS encourage users to try them if they seem undecided or ask about 'what is new' or 'specials'.
-          3. STRICT NO-LISTING POLICY: You are FORBIDDEN from listing menu items, prices, or specials in the chat. They are already visible to the user on the screen.
-          4. NAVIGATION: If a user asks about specials, daily specials, soups, or any menu category:
+          2. DAILY SPECIALS: We have a dedicated 'Weekly Soups and Specials' section. ALWAYS encourage users to try them if they seem undecided or ask about 'what is new' or 'specials'.
+          3. STRICT DATA INTEGRITY: You MUST ONLY use the items and details provided in the MENU above. Do NOT invent specials, soups, or prices. If it's not in the JSON, it doesn't exist.
+          4. STRICT NO-LISTING POLICY: You are FORBIDDEN from listing menu items, prices, or specials in the chat. They are already visible to the user on the screen.
+          5. NAVIGATION: If a user asks about specials, weekly specials, soups, or any menu category:
              a) Call the appropriate 'highlightCategory' or 'highlightMenuItem' tool immediately.
              b) Respond with: "I've pointed out the [Category/Item] for you on the menu board! Just tap it to add it to your cart, and I'll take care of the rest."
-          5. PROACTIVE SUGGESTIONS: When a user adds an item:
+          6. PROACTIVE SUGGESTIONS: When a user adds an item:
              a) If it's food (Breakfast/Lunch/Special), proactively suggest a complement (Smoothie, Juice, Soup, or Coffee).
              b) If it's a drink, suggest a dessert or a signature sandwich.
-             c) Always ask about customizations if the item has them (like bread choice for sandwiches or milk for coffee).
-          5. LOYALTY REDEMPTION: 
+             c) ALWAYS ask about required options for the specific item:
+                - Soups: MUST ask for Small ($4.00) or Large ($5.00).
+                - Bagels: MUST ask for bagel type (Plain, Sesame, Everything, Cinnamon Raisin, Asiago, Wheat, Onion).
+                - Bagels with Cream Cheese: MUST ask for flavor (Plain, Vegetable, Pesto, Honey Walnut, Chive, Strawberry, Jalapeno).
+                - Bagels with PB & Jelly or just Jelly: MUST ask for jelly choice (Grape or Strawberry).
+                - Sandwiches: MUST ask for bread choice and side choice.
+                - Breakfast: MUST ask for bread choice.
+          7. LOYALTY REDEMPTION: 
              a) Users earn 1 point per $1 spent.
              b) They can redeem points for a discount: 10 points = $10 discount.
              c) Redemption must be in multiples of 10 points (10, 20, 30...).
              d) If a user has 10 or more points, PROACTIVELY ask if they would like to redeem them whenever they are nearing checkout or checking their total.
              e) Before calling 'applyLoyaltyDiscount', ask the user EXACTLY how many points they wish to redeem (e.g. "You have 25 points! Would you like to use 10 points for a $10 discount, or 20 for $20?").
-          6. CONCISE: Keep responses to exactly 1-2 brief, friendly sentences. Use conversational pills for common next steps like [[Customize it]] or [[View Specials]].`,
+          8. CONCISE: Keep responses to exactly 1-2 brief, friendly sentences. Use conversational pills for common next steps like [[Customize it]] or [[View Specials]].`,
           tools: [{
             functionDeclarations: [
               {
@@ -419,7 +472,8 @@ export function Receptionist({
                     itemName: { type: Type.STRING },
                     quantity: { type: Type.NUMBER },
                     options: { type: Type.STRING },
-                    customizations: { type: Type.STRING }
+                    customizations: { type: Type.STRING },
+                    price: { type: Type.NUMBER, description: "The specific price of the item if multiple sizes exist (e.g. 4.00 for Small soup, 5.00 for Large)" }
                   },
                   required: ["itemName"]
                 }
@@ -543,7 +597,13 @@ export function Receptionist({
       if (calls) {
         for (const call of calls) {
           if (call.name === "addToCart") {
-            const res = addToCart(call.args.itemName as string, (call.args.quantity as number) || 1, call.args.options as string, call.args.customizations as string);
+            const res = addToCart(
+              call.args.itemName as string, 
+              (call.args.quantity as number) || 1, 
+              call.args.options as string, 
+              call.args.customizations as string,
+              call.args.price as number
+            );
             toolResponseStr += res + " ";
           }
           if (call.name === "removeFromCart") {

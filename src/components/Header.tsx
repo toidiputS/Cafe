@@ -35,13 +35,18 @@ export function Header({ isAdmin, user, onOpenAdmin, categories, isSidebarOpen, 
               <Coffee className="w-6 h-6 text-bg" />
             </div>
             <div className="hidden sm:block">
-              <span className="font-display text-[15px] font-black text-accent tracking-tighter block leading-none">THE BRIDGE CAFE</span>
+              <span className="font-display text-[15px] font-black text-accent tracking-tighter block leading-none">THE BRIDGE CAFÉ</span>
             </div>
           </div>
         </div>
         
         <nav className="hidden md:flex items-center gap-8 text-[11px] font-black uppercase tracking-widest text-secondary">
           {[
+            {
+              label: "Specials",
+              id: "cat-weekly-soups-and-specials",
+              items: []
+            },
             {
               label: "Food",
               id: "group-food",

@@ -7,7 +7,18 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+let stripe: Stripe | null = null;
+
+function getStripe() {
+  if (!stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error("STRIPE_SECRET_KEY environment variable is required");
+    }
+    stripe = new Stripe(key);
+  }
+  return stripe;
+}
 
 async function startServer() {
   const app = express();
@@ -19,12 +30,9 @@ async function startServer() {
   app.post("/api/create-payment-intent", async (req, res) => {
     try {
       const { amount, metadata } = req.body;
+      const stripeClient = getStripe();
 
-      if (!process.env.STRIPE_SECRET_KEY) {
-        return res.status(500).json({ error: "Stripe Secret Key not configured" });
-      }
-
-      const paymentIntent = await stripe.paymentIntents.create({
+      const paymentIntent = await stripeClient.paymentIntents.create({
         amount, // in cents
         currency: "usd",
         automatic_payment_methods: { enabled: true },

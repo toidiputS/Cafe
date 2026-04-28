@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Header } from "./components/Header";
 import { Hero } from "./components/Hero";
 import { MenuSection } from "./components/MenuSection";
@@ -95,7 +95,25 @@ export default function App() {
 
   useEffect(() => {
     fetchMenu();
-    
+  }, [fetchMenu]);
+
+  useEffect(() => {
+    if (isAdmin && user && menu.length > 0) {
+      const hasSpecials = menu.some(m => m.category === "Weekly Soups and Specials");
+      const chickenRice = menu.find(m => m.id === "s-chicken-rice");
+      const bagelButter = menu.find(m => m.id === "b-bag-butter");
+      
+      const needsUpdate = !hasSpecials || 
+                          (chickenRice && !Array.isArray(chickenRice.price)) ||
+                          (bagelButter && !bagelButter.description);
+      
+      if (needsUpdate) {
+        migrateMenu();
+      }
+    }
+  }, [menu, isAdmin, user, migrateMenu]);
+
+  useEffect(() => {
     return onAuthStateChanged(auth, async (fbUser) => {
       setUser(fbUser);
       if (fbUser) {
@@ -206,6 +224,19 @@ export default function App() {
     }
   }, []);
 
+  const paymentSuccessRef = useRef<((id: string) => void) | null>(null);
+
+  const finalizeOrder = useCallback(async (paymentIntentId: string) => {
+    if (paymentSuccessRef.current) {
+      paymentSuccessRef.current(paymentIntentId);
+    }
+    setClientSecret(null);
+  }, []);
+
+  const onPaymentSuccessRegister = useCallback((callback: (id: string) => void) => {
+    paymentSuccessRef.current = callback;
+  }, []);
+
   const initiatePayment = useCallback(async (amount: number) => {
     try {
       setPaymentAmount(amount);
@@ -217,7 +248,8 @@ export default function App() {
           metadata: {
             items: cart.map(i => `${i.quantity}x ${i.name}`).join(", "),
             delivery: isDelivery ? "Yes" : "No",
-            address: deliveryAddress || "N/A"
+            address: deliveryAddress || "N/A",
+            customer: user?.email || "Guest"
           }
         }),
       });
@@ -231,14 +263,20 @@ export default function App() {
       console.error("Payment initiation error:", error);
       alert("Could not start payment. Please check your Stripe keys in Settings.");
     }
-  }, []);
+  }, [cart, isDelivery, deliveryAddress, user]);
 
   const stripeOptions = useMemo(() => ({
     clientSecret: clientSecret || undefined,
     appearance: {
       theme: 'night' as const,
       variables: {
-        colorPrimary: '#E8D5C4',
+        colorPrimary: '#ff6b00',
+        colorBackground: '#1a1a1a',
+        colorText: '#ffffff',
+        colorDanger: '#df1b41',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        spacingUnit: '4px',
+        borderRadius: '12px',
       },
     },
   }), [clientSecret]);
@@ -377,13 +415,14 @@ export default function App() {
             isDelivery={isDelivery}
             setIsDelivery={setIsDelivery}
             onInitPayment={initiatePayment}
+            onPaymentSuccess={onPaymentSuccessRegister}
             isCartOpen={isCartOpen}
             setIsCartOpen={setIsCartOpen}
             onClose={() => setIsAssistantOpen(false)}
             lastInteraction={lastInteraction}
           />
         </div>
-
+ 
         <AnimatePresence>
           {clientSecret && (
             <motion.div 
@@ -397,8 +436,7 @@ export default function App() {
                   amount={paymentAmount * 100} 
                   cart={cart}
                   onSuccess={(id) => {
-                    setClientSecret(null);
-                    setCart([]);
+                    finalizeOrder(id);
                   }}
                   onCancel={() => setClientSecret(null)}
                 />

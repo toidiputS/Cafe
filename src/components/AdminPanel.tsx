@@ -56,6 +56,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [orderFilter, setOrderFilter] = useState<string>("all");
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"idle" | "success" | "error">("idle");
@@ -129,9 +130,14 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
     return orders.filter(o => o.status.toLowerCase() === orderFilter.toLowerCase());
   }, [orders, orderFilter]);
 
-  const filteredItems = filterCategory === "All" 
-    ? items 
-    : items.filter(i => i.category === filterCategory);
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      const matchesCategory = filterCategory === "All" || item.category === filterCategory;
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesCategory && matchesSearch;
+    });
+  }, [items, filterCategory, searchQuery]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -366,9 +372,19 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
                       <input 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search menu..."
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-accent"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-accent text-white"
                       />
+                      {searchQuery && (
+                        <button 
+                          onClick={() => setSearchQuery("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-white"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
 

@@ -94,7 +94,7 @@ export function SidebarInfo({ isAdmin, user, onOpenAdmin, onClose }: SidebarInfo
         </div>
 
         <p className="text-[8px] uppercase tracking-[0.4em] text-secondary font-black opacity-10 text-center mt-8">
-          © 2026 THE BRIDGE CAFE
+          © 2026 THE BRIDGE CAFÉ
         </p>
       </div>
     </aside>

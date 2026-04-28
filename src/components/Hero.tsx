@@ -46,7 +46,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
              animate={{ opacity: 1, y: 0 }}
              className="text-[10px] md:text-[12px] font-black uppercase tracking-[0.8em] text-accent/80 mb-4"
           >
-            CAFE & GRILL
+            CAFÉ & GRILL
           </motion.div>
           
           <motion.h1 
@@ -55,7 +55,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
             className="font-display text-[42px] sm:text-[90px] md:text-[120px] font-black leading-[0.82] tracking-tighter text-accent mb-8 flex flex-col items-center text-center"
           >
             <span>THE BRIDGE</span>
-            <span>CAFE.</span>
+            <span>CAFÉ.</span>
           </motion.h1>
           
           <motion.div 

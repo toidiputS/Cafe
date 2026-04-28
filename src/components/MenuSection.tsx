@@ -6,6 +6,8 @@ import { Star, MessageSquare, Plus } from "lucide-react";
 import { ReviewModal } from "./ReviewModal";
 import { ItemCustomizerModal } from "./ItemCustomizerModal";
 
+import Markdown from "react-markdown";
+
 interface MenuSectionProps {
   menu: MenuItem[];
   onOrder: (name: string, qty?: number, options?: string, customizations?: string, specificPrice?: number) => void;
@@ -100,7 +102,7 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
                               className="group relative px-2 py-1"
                             >
                               <span className="text-[14px] font-black uppercase tracking-[0.3em] text-secondary group-hover:text-accent transition-colors">
-                                {c}
+                                {CATEGORY_METADATA[c].navLabel || c}
                               </span>
                               <div className="absolute -bottom-1 left-0 w-0 h-[2px] bg-accent transition-all duration-300 group-hover:w-full" />
                             </button>
@@ -110,22 +112,24 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
                   </div>
                 </div>
               )}
-              <div id={`cat-${category.toLowerCase().replace(/\s+/g, '-')}`} className="menu-category scroll-mt-24 relative max-w-5xl mx-auto pt-16">
-                <div className="mb-12 text-left flex flex-col items-start px-2">
-                  <h3 className="font-display italic text-7xl text-primary relative z-10 mb-6 font-black tracking-tight">
-                    {category}
-                  </h3>
-                  {meta?.subHeader && (
-                    <h4 className="text-secondary font-display italic text-4xl mb-8 font-black">
-                      {meta.subHeader}
-                    </h4>
-                  )}
-                  {meta?.description && (
-                    <div className="text-secondary text-lg italic space-y-4 max-w-4xl mb-10 leading-relaxed whitespace-pre-line opacity-90 border-l-2 border-orange-accent/30 pl-6">
-                      {meta.description}
-                    </div>
-                  )}
-                </div>
+              <div id={`cat-${category.toLowerCase().replace(/\s+/g, '-')}`} className={cn("menu-category scroll-mt-24 relative max-w-5xl mx-auto", !meta?.hideHeader && "pt-16")}>
+                {!meta?.hideHeader && (
+                  <div className="mb-12 text-left flex flex-col items-start px-2">
+                    <h3 className="font-display italic text-7xl text-primary relative z-10 mb-6 font-black tracking-tight">
+                      {category}
+                    </h3>
+                    {meta?.subHeader && (
+                      <h4 className="text-secondary font-display italic text-4xl mb-8 font-black">
+                        {meta.subHeader}
+                      </h4>
+                    )}
+                    {meta?.description && (
+                      <div className="text-secondary text-lg italic space-y-4 max-w-4xl mb-10 leading-relaxed whitespace-pre-line opacity-90 border-l-2 border-orange-accent/30 pl-6">
+                        {meta.description}
+                      </div>
+                    )}
+                  </div>
+                )}
 
               <AnimatePresence>
                 {highlightedCategory === category && (
@@ -180,8 +184,8 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
                             </p>
                           )}
                           {subcatMeta?.description && (
-                            <div className="text-secondary text-sm italic space-y-2 max-w-3xl leading-relaxed whitespace-pre-line border-l-2 border-white/10 pl-4">
-                              {subcatMeta.description}
+                            <div className="text-secondary text-sm italic space-y-2 max-w-3xl leading-relaxed whitespace-pre-line border-l-2 border-white/10 pl-4 markdown-body">
+                              <Markdown>{subcatMeta.description}</Markdown>
                             </div>
                           )}
                           {subcatMeta?.bannerBlocks && (
@@ -273,22 +277,26 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
                                     </div>
                                   </div>
                                 </div>
-                                <div className="text-orange-accent font-black text-xl tracking-widest font-sans flex items-center gap-3">
-                                  <span>
-                                    {Array.isArray(item.price) 
-                                      ? item.price.map(p => `$${p.toFixed(2)}`).join(", ")
-                                      : `$${item.price.toFixed(2)}`}
-                                  </span>
-                                  {item.isSpecial && (
-                                    <span className="bg-orange-accent/10 text-orange-accent text-[12px] font-black uppercase px-3 py-1 rounded shadow-sm border border-orange-accent/20">
-                                      Weekly Special
+                                {item.category !== "Catering" && (
+                                  <div className="text-orange-accent font-black text-xl tracking-widest font-sans flex items-center gap-3">
+                                    <span>
+                                      {Array.isArray(item.price) 
+                                        ? item.price.map(p => `$${p.toFixed(2)}`).join(", ")
+                                        : item.price === 0 
+                                          ? "Call for Pricing" 
+                                          : `$${item.price.toFixed(2)}`}
                                     </span>
-                                  )}
-                                </div>
+                                    {item.isSpecial && (
+                                      <span className="bg-orange-accent/10 text-orange-accent text-[12px] font-black uppercase px-3 py-1 rounded shadow-sm border border-orange-accent/20">
+                                        Weekly Special
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                                 {item.description && (
-                                  <p className="text-xl text-secondary/90 leading-relaxed font-sans max-w-4xl group-hover:text-secondary transition-colors whitespace-pre-line">
-                                    {item.description}
-                                  </p>
+                                  <div className="text-xl text-secondary/90 leading-relaxed font-sans max-w-4xl group-hover:text-secondary transition-colors whitespace-pre-line markdown-body">
+                                    <Markdown>{item.description}</Markdown>
+                                  </div>
                                 )}
                               </div>
                             </div>
