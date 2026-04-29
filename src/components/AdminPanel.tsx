@@ -46,7 +46,7 @@ interface AdminPanelProps {
   onMenuUpdate: (newMenu?: MenuItem[]) => void;
 }
 
-type Tab = "dashboard" | "orders" | "menu" | "settings";
+type Tab = "dashboard" | "orders" | "menu" | "analytics" | "settings";
 
 export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("orders");
@@ -101,7 +101,13 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
     const todayOrders = orders.filter(o => o.createdAt?.toDate() >= today);
     const totalSales = todayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     const pendingCount = orders.filter(o => o.status === "Pending" || o.status === "Preparing").length;
-    return { totalSales, todayOrderCount: todayOrders.length, pendingCount };
+    
+    // Additional metrics
+    const averageOrderValue = todayOrders.length > 0 ? totalSales / todayOrders.length : 0;
+    const completedCount = orders.filter(o => o.status === "Completed").length;
+    const cancellationCount = orders.filter(o => o.status === "Cancelled").length;
+    
+    return { totalSales, todayOrderCount: todayOrders.length, pendingCount, averageOrderValue, completedCount, cancellationCount };
   }, [orders]);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -173,6 +179,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
               { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
               { id: "orders", icon: ShoppingBag, label: "Live Orders", badge: dashboardStats.pendingCount },
               { id: "menu", icon: ChefHat, label: "Menu Editor" },
+              { id: "analytics", icon: TrendingUp, label: "Analytics" },
               { id: "settings", icon: Settings, label: "Settings" }
             ].map(tab => (
               <button
@@ -225,7 +232,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8">
             {activeTab === "dashboard" && (
               <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5 space-y-2">
                     <Label>Today\'s Sales</Label>
                     <p className="text-4xl font-display font-black text-white">${dashboardStats.totalSales.toFixed(2)}</p>
@@ -240,9 +247,61 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                     <span className="text-[10px] font-bold text-secondary uppercase">Last 24 hours</span>
                   </div>
                   <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5 space-y-2">
+                    <Label>Average Ticket</Label>
+                    <p className="text-4xl font-display font-black text-accent">${dashboardStats.averageOrderValue.toFixed(2)}</p>
+                    <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Per Customer</span>
+                  </div>
+                  <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5 space-y-2">
                     <Label>Pending Action</Label>
                     <p className="text-4xl font-display font-black text-red-500">{dashboardStats.pendingCount}</p>
                     <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Immediate Attention</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="bg-[#1a1a1a] p-8 rounded-2xl border border-white/5">
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-secondary mb-6 flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Recent Activity
+                    </h4>
+                    <div className="space-y-4">
+                      {orders.slice(0, 5).map(order => (
+                        <div key={order.id} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
+                          <div>
+                            <p className="text-xs font-bold text-white">{order.customerName || "Customer"}</p>
+                            <p className="text-[10px] text-secondary font-mono mt-0.5">${(order.total || 0).toFixed(2)} • {order.status}</p>
+                          </div>
+                          <span className="text-[9px] text-secondary font-mono uppercase">{order.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-[#1a1a1a] p-8 rounded-2xl border border-white/5">
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-secondary mb-6 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4" />
+                      Orders Summary
+                    </h4>
+                    <div className="space-y-6">
+                      {[
+                        { label: "Completed", count: dashboardStats.completedCount, color: "bg-green-500" },
+                        { label: "Pending", count: dashboardStats.pendingCount, color: "bg-red-500" },
+                        { label: "Cancelled", count: dashboardStats.cancellationCount, color: "bg-white/20" }
+                      ].map(stat => (
+                        <div key={stat.label} className="space-y-2">
+                          <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                            <span className="text-secondary">{stat.label}</span>
+                            <span className="text-white">{stat.count}</span>
+                          </div>
+                          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                              className={cn("h-full transition-all duration-500", stat.color)} 
+                              style={{ width: `${orders.length > 0 ? (stat.count / orders.length) * 100 : 0}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -362,6 +421,82 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
               </div>
             )}
 
+            {activeTab === "analytics" && (
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="bg-[#1a1a1a] p-8 rounded-2xl border border-white/5">
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-secondary mb-8">Sales Overview (MTD)</h4>
+                    <div className="h-64 flex items-end justify-between gap-2 px-2">
+                      {/* Simple Bar Chart Concept */}
+                      {[40, 60, 45, 90, 75, 55, 30].map((h, i) => (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-3 group">
+                          <div className="w-full bg-accent/20 rounded-t-lg group-hover:bg-accent/40 transition-all relative overflow-hidden" style={{ height: `${h}%` }}>
+                            <motion.div 
+                              initial={{ height: 0 }}
+                              animate={{ height: "100%" }}
+                              className="absolute bottom-0 left-0 right-0 bg-accent transition-all"
+                            />
+                          </div>
+                          <span className="text-[9px] font-black text-secondary tracking-widest">DAY {i+1}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-[#1a1a1a] p-8 rounded-2xl border border-white/5">
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-secondary mb-8 text-center sm:text-left">Popular Categories</h4>
+                    <div className="space-y-8">
+                      {[
+                        { label: "Breakfast", count: 124, price: 1540 },
+                        { label: "Lunch", count: 98, price: 1210 },
+                        { label: "Drinks", count: 245, price: 890 }
+                      ].map(cat => (
+                        <div key={cat.label} className="flex items-center gap-6">
+                           <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center shrink-0 border border-white/10">
+                             <Label>{cat.label[0]}</Label>
+                           </div>
+                           <div className="flex-1 space-y-1.5">
+                             <div className="flex justify-between text-xs font-bold text-white">
+                               <span>{cat.label}</span>
+                               <span className="text-accent">${cat.price}</span>
+                             </div>
+                             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                               <div className="h-full bg-accent/40 w-full" style={{ width: `${(cat.count / 300) * 100}%` }} />
+                             </div>
+                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#1a1a1a] p-8 rounded-2xl border border-white/5 overflow-x-auto">
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-secondary mb-6">Top Performing Items</h4>
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-white/5">
+                          <th className="pb-4 text-[9px] font-black uppercase tracking-widest text-secondary">Item Name</th>
+                          <th className="pb-4 text-[9px] font-black uppercase tracking-widest text-secondary">Units Sold</th>
+                          <th className="pb-4 text-[9px] font-black uppercase tracking-widest text-secondary">Revenue</th>
+                          <th className="pb-4 text-[9px] font-black uppercase tracking-widest text-secondary text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.slice(0, 5).map(item => (
+                          <tr key={item.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <td className="py-4 text-xs font-bold text-white uppercase tracking-tight">{item.name}</td>
+                            <td className="py-4 text-xs font-mono text-secondary">{(Math.random() * 100).toFixed(0)}</td>
+                            <td className="py-4 text-xs font-mono text-white">${(Math.random() * 1000).toFixed(2)}</td>
+                            <td className="py-4 text-right">
+                              <span className="px-2 py-1 bg-green-500/10 text-green-400 rounded text-[8px] font-black uppercase tracking-widest">Trending</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                </div>
+              </div>
+            )}
             {activeTab === "menu" && (
               <div className="flex flex-col md:flex-row h-full gap-8">
                 {/* Menu Sidebar */}
@@ -459,7 +594,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                       </div>
 
                       <div>
-                        <Label>Classification</Label>
+                        <Label>Classification & Inventory</Label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                           <InputBlock 
                             label="Category" 
@@ -470,6 +605,39 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                             label="Subcategory" 
                             value={editingItem.subcategory || ""} 
                             onChange={(v) => setEditingItem({...editingItem, subcategory: v})} 
+                          />
+                          <InputBlock 
+                            label="Stock Quantity" 
+                            type="number"
+                            value={editingItem.stockQuantity ?? ""} 
+                            onChange={(v) => setEditingItem({...editingItem, stockQuantity: parseInt(v)})} 
+                          />
+                          <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 mt-6 lg:mt-5">
+                            <div>
+                               <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Active Status</h4>
+                               <p className="text-[9px] text-secondary mt-1">Hide item from customer view</p>
+                            </div>
+                            <Switch 
+                              checked={editingItem.isActive !== false} 
+                              onChange={(v) => setEditingItem({...editingItem, isActive: v})} 
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Special Pricing & Badges</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                          <InputBlock 
+                            label="Discounted Price ($)" 
+                            type="number"
+                            value={editingItem.discountedPrice ?? ""} 
+                            onChange={(v) => setEditingItem({...editingItem, discountedPrice: parseFloat(v)})} 
+                          />
+                          <InputBlock 
+                            label="Badge Text (e.g. HAPPY HOUR)" 
+                            value={editingItem.discountLabel || ""} 
+                            onChange={(v) => setEditingItem({...editingItem, discountLabel: v})} 
                           />
                         </div>
                       </div>

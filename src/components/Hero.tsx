@@ -44,7 +44,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
           <motion.div
              initial={{ opacity: 0, y: -10 }}
              animate={{ opacity: 1, y: 0 }}
-             className="text-[10px] md:text-[12px] font-black uppercase tracking-[0.8em] text-accent/80 mb-4"
+             className="text-[10px] md:text-[12px] font-black uppercase tracking-[0.8em] text-accent/80 mb-4 pt-[20px]"
           >
             CAFÉ & GRILL
           </motion.div>
@@ -52,10 +52,10 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
           <motion.h1 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="font-display text-[42px] sm:text-[90px] md:text-[120px] font-black leading-[0.82] tracking-tighter text-accent mb-8 flex flex-col items-center text-center"
+            className="font-display text-[32px] sm:text-[70px] md:text-[90px] font-black leading-[0.82] tracking-tighter text-accent mb-8 flex flex-col items-center text-center"
           >
-            <span>THE BRIDGE</span>
-            <span>CAFÉ.</span>
+            <span className="pt-[21px]">THE BRIDGE</span>
+            <span className="pt-[21px]">CAFÉ.</span>
           </motion.h1>
           
           <motion.div 
@@ -64,7 +64,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
             transition={{ delay: 0.2 }}
             className="flex flex-col items-center w-full"
           >
-            <p className="text-[13px] sm:text-[18px] md:text-[22px] font-semibold text-[#8EB08E]/90 leading-tight italic font-display text-center mb-6 max-w-2xl px-4">
+            <p className="text-[13px] sm:text-[18px] md:text-[22px] font-semibold text-[#8EB08E]/90 leading-tight italic font-display text-center mb-6 max-w-2xl px-4 pt-[21px]">
               At The Bridge Café on Elm, we prepare everything in-house with only the freshest ingredients, herbs, and spices.
             </p>
             
@@ -74,13 +74,13 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
               transition={{ delay: 0.3 }}
               className="relative border-l-2 border-orange-accent/30 pl-6 max-w-lg mx-4"
             >
-              <p className="text-[10px] md:text-[14px] text-secondary font-medium leading-relaxed tracking-tight text-left italic opacity-80">
+              <p className="text-[10px] md:text-[14px] text-secondary font-medium leading-relaxed tracking-tight text-left italic opacity-80 pt-[21px]">
                 "Our items change periodically, so keep checking in with us! Craving something not on the menu? Call us – we make every item to order!"
               </p>
             </motion.div>
 
             {/* Features (Desktop & Mobile) */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-8 w-full mt-12 px-2 max-w-5xl border-t border-white/5 pt-12 relative">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-8 w-full mt-12 px-2 max-w-5xl border-t border-white/5 pt-[69px] relative">
               {features.map((feature) => (
                 <div 
                   key={feature.id}

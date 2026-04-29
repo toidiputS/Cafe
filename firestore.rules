@@ -6,6 +6,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /test/connection {
+      allow get: if true;
+    }
+
     // Helpers
     function isSignedIn() { return request.auth != null; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
@@ -50,7 +54,7 @@ service cloud.firestore {
              data.customerId is string &&
              data.customerName is string &&
              data.items is list && data.items.size() > 0 &&
-             data.status in ["Order Received", "Pending", "Preparing", "Out for Delivery", "Delivered", "Ready for Pickup", "Completed", "Ready"] &&
+             data.status in ["Order Received", "Pending", "Preparing", "Out for Delivery", "Delivered", "Ready for Pickup", "Completed", "Ready", "Cancelled"] &&
              data.total is number && data.total >= 0 &&
              data.createdAt == request.time;
     }

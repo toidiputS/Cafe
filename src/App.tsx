@@ -20,6 +20,7 @@ import { doc, updateDoc, serverTimestamp, collection, query, getDocs, setDoc, ge
 import { onAuthStateChanged } from "firebase/auth";
 import { AdminPanel } from "./components/AdminPanel";
 import { ReviewSection } from "./components/ReviewSection";
+import { CheckoutOverlay } from "./components/CheckoutOverlay";
 import { Settings } from "lucide-react";
 import { cn } from "./lib/utils";
 
@@ -49,6 +50,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [lastInteraction, setLastInteraction] = useState<{ type: 'click' | 'add', name: string } | null>(null);
 
   useEffect(() => {
@@ -434,6 +436,10 @@ export default function App() {
             onPaymentSuccess={onPaymentSuccessRegister}
             isCartOpen={isCartOpen}
             setIsCartOpen={setIsCartOpen}
+            onOpenCheckout={() => {
+              setIsCheckoutOpen(true);
+              setIsAssistantOpen(false);
+            }}
             onClose={() => setIsAssistantOpen(false)}
             lastInteraction={lastInteraction}
           />
@@ -445,6 +451,25 @@ export default function App() {
           activeSection={highlightedCategory || ""}
         />
  
+        <AnimatePresence>
+          {isCheckoutOpen && (
+            <CheckoutOverlay 
+              isOpen={isCheckoutOpen}
+              onClose={() => setIsCheckoutOpen(false)}
+              cart={cart}
+              user={user}
+              isDelivery={isDelivery}
+              setIsDelivery={setIsDelivery}
+              deliveryAddress={deliveryAddress}
+              setDeliveryAddress={setDeliveryAddress}
+              onInitiatePayment={(total) => {
+                setIsCheckoutOpen(false);
+                initiatePayment(total);
+              }}
+            />
+          )}
+        </AnimatePresence>
+
         <AnimatePresence>
           {clientSecret && (
             <motion.div 

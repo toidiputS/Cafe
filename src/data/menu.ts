@@ -9,6 +9,10 @@ export interface MenuItem {
   isSpecial?: boolean;
   highlightColor?: string;
   sortOrder?: number;
+  isActive?: boolean;
+  stockQuantity?: number;
+  discountedPrice?: number;
+  discountLabel?: string;
 }
 
 export const BUSINESS_INFO = {

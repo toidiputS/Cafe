@@ -57,7 +57,47 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
         onAdd={(item, qty, opts, cust) => onOrder(item.name, qty, opts, cust, Array.isArray(item.price) ? item.price[0] : item.price)}
       />
 
-      <div className="space-y-48">
+      <div className="mb-24 mt-12 max-w-5xl mx-auto px-4">
+        <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-accent mb-8 opacity-50">Quick Navigation</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-12 gap-y-12">
+          {categories.map((category) => {
+            const catMenu = menu.filter(item => item.category === category);
+            if (catMenu.length === 0) return null;
+            const subcatNames = Array.from(new Set(catMenu.map(i => i.subcategory || ""))).filter(Boolean);
+            
+            return (
+              <div key={category} className="space-y-4">
+                <button
+                  onClick={() => {
+                    const el = document.getElementById(`cat-${category.toLowerCase().replace(/\s+/g, '-')}`);
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="font-display italic text-2xl text-primary hover:text-accent transition-colors font-black uppercase tracking-tighter text-left group"
+                >
+                  {CATEGORY_METADATA[category]?.navLabel || category}
+                  <div className="h-0.5 w-0 group-hover:w-full bg-accent transition-all duration-300" />
+                </button>
+                <div className="flex flex-col gap-2">
+                  {subcatNames.map(sub => (
+                    <button
+                      key={sub}
+                      onClick={() => {
+                        const el = document.getElementById(`subcat-${category.toLowerCase().replace(/\s+/g, '-')}-${sub.toLowerCase().replace(/\s+/g, '-')}`);
+                        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className="text-[11px] font-bold uppercase tracking-widest text-secondary hover:text-white transition-colors text-left"
+                    >
+                      {sub}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-32">
         {categories.map((category, index) => {
           const catMenu = menu.filter(item => item.category === category);
           const meta = CATEGORY_METADATA[category];
@@ -78,12 +118,12 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
               {showGroupLabel && (
                 <div id={`group-${meta.groupLabel.toLowerCase()}`} className="relative border-y border-white/5 bg-white/[0.01] overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-b from-orange-accent/5 to-transparent pointer-events-none" />
-                  <div className="max-w-7xl mx-auto py-24 px-6 relative z-10">
-                    <h2 className="font-display text-center text-[180px] leading-[0.8] text-orange-accent italic font-black uppercase tracking-tighter opacity-10 absolute left-1/2 -translate-x-1/2 top-4 select-none whitespace-nowrap">
+                  <div className="max-w-7xl mx-auto py-16 px-6 relative z-10">
+                    <h2 className="font-display text-center text-[100px] leading-[0.8] text-orange-accent italic font-black uppercase tracking-tighter opacity-10 absolute left-1/2 -translate-x-1/2 top-4 select-none whitespace-nowrap">
                       {meta.groupLabel}
                     </h2>
                     <div className="text-center">
-                      <h2 className="font-display text-8xl text-primary italic font-black uppercase tracking-tighter mb-12 relative inline-block">
+                      <h2 className="font-display text-6xl text-primary italic font-black uppercase tracking-tighter mb-12 relative inline-block">
                         {meta.groupLabel}
                         <div className="absolute -bottom-4 left-0 w-full h-1 bg-orange-accent shadow-[0_0_15px_rgba(255,107,0,0.5)]" />
                       </h2>
@@ -115,16 +155,16 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
               <div id={`cat-${category.toLowerCase().replace(/\s+/g, '-')}`} className={cn("menu-category scroll-mt-24 relative max-w-5xl mx-auto", !meta?.hideHeader && "pt-16")}>
                 {!meta?.hideHeader && (
                   <div className="mb-12 text-left flex flex-col items-start px-2">
-                    <h3 className="font-display italic text-7xl text-primary relative z-10 mb-6 font-black tracking-tight">
+                    <h3 className="font-display italic text-5xl text-primary relative z-10 mb-6 font-black tracking-tight pt-[36px]">
                       {category}
                     </h3>
                     {meta?.subHeader && (
-                      <h4 className="text-secondary font-display italic text-4xl mb-8 font-black">
+                      <h4 className="text-secondary font-display italic text-3xl mb-8 font-black">
                         {meta.subHeader}
                       </h4>
                     )}
                     {meta?.description && (
-                      <div className="text-secondary text-lg italic space-y-4 max-w-4xl mb-10 leading-relaxed whitespace-pre-line opacity-90 border-l-2 border-orange-accent/30 pl-6">
+                      <div className="text-secondary text-base italic space-y-4 max-w-4xl mb-10 leading-relaxed whitespace-pre-line opacity-90 border-l-2 border-orange-accent/30 pl-6">
                         {meta.description}
                       </div>
                     )}
@@ -175,7 +215,10 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
                     <div key={subcatName} className="space-y-12 px-2">
                       {subcatName && (
                         <div className="space-y-6">
-                          <h4 className="text-orange-accent font-display italic text-4xl font-black border-b border-white/5 pb-4">
+                          <h4 
+                            id={`subcat-${category.toLowerCase().replace(/\s+/g, '-')}-${subcatName.toLowerCase().replace(/\s+/g, '-')}`}
+                            className="text-orange-accent font-display italic text-3xl font-black border-b border-white/5 pb-4 uppercase tracking-tighter"
+                          >
                             {subcatName}
                           </h4>
                           {subcatMeta?.subHeader && (
@@ -249,7 +292,7 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
                                   )}
                                 </AnimatePresence>
                                 <div className="flex justify-between items-baseline group-hover:text-orange-accent transition-colors gap-8">
-                                  <span className="font-black text-3xl tracking-tight leading-tight uppercase font-sans">
+                                  <span className="font-black text-2xl tracking-tight leading-tight uppercase font-sans">
                                     {item.name}
                                   </span>
                                   <div className="flex items-center gap-3">
@@ -278,7 +321,7 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
                                   </div>
                                 </div>
                                 {item.category !== "Catering" && (
-                                  <div className="text-orange-accent font-black text-xl tracking-widest font-sans flex items-center gap-3">
+                                  <div className="text-orange-accent font-black text-lg tracking-widest font-sans flex items-center gap-3">
                                     <span>
                                       {Array.isArray(item.price) 
                                         ? item.price.map(p => `$${p.toFixed(2)}`).join(", ")
@@ -294,7 +337,7 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
                                   </div>
                                 )}
                                 {item.description && (
-                                  <div className="text-xl text-secondary/90 leading-relaxed font-sans max-w-4xl group-hover:text-secondary transition-colors whitespace-pre-line markdown-body">
+                                  <div className="text-base text-secondary/90 leading-relaxed font-sans max-w-4xl group-hover:text-secondary transition-colors whitespace-pre-line markdown-body">
                                     <Markdown>{item.description}</Markdown>
                                   </div>
                                 )}

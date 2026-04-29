@@ -17,7 +17,8 @@ import {
   orderBy, 
   limit,
   setDoc,
-  getDoc
+  getDoc,
+  onSnapshot
 } from "firebase/firestore";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { type CartItem } from "../App";
@@ -59,6 +60,7 @@ interface ReceptionistProps {
   setIsDelivery: React.Dispatch<React.SetStateAction<boolean>>;
   onInitPayment: (amount: number) => void;
   onPaymentSuccess?: (callback: (orderId: string) => void) => void;
+  onOpenCheckout?: () => void;
   isCartOpen: boolean;
   setIsCartOpen: React.Dispatch<React.SetStateAction<boolean>>;
   onClose?: () => void;
@@ -80,6 +82,7 @@ export function Receptionist({
   setIsDelivery,
   onInitPayment,
   onPaymentSuccess,
+  onOpenCheckout,
   isCartOpen,
   setIsCartOpen,
   onClose,
@@ -290,6 +293,7 @@ export function Receptionist({
   const [deliveryType, setDeliveryType] = useState<"standard" | "express" | "scheduled">("standard");
   const [discount, setDiscount] = useState(0);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<any>(null);
+  const [activeOrder, setActiveOrder] = useState<any>(null);
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -354,6 +358,40 @@ export function Receptionist({
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setActiveOrder(null);
+      return;
+    }
+
+    const path = "orders";
+    const q = query(
+      collection(db, path),
+      where("customerId", "==", user.uid),
+      orderBy("createdAt", "desc"),
+      limit(1)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const orderData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as any;
+        // If the order is "active" (not cancelled or completed), show it
+        const terminalStatuses = ["Cancelled", "Delivered", "Picked Up", "Completed"];
+        if (!terminalStatuses.includes(orderData.status as string)) {
+          setActiveOrder(orderData);
+        } else {
+          setActiveOrder(null);
+        }
+      } else {
+        setActiveOrder(null);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -763,8 +801,13 @@ export function Receptionist({
             }
           }
           if (call.name === "initiatePayment") {
-            onInitPayment(call.args.amount as number);
-            toolResponseStr += "I've opened the secure payment form for you. ";
+            if (onOpenCheckout) {
+              onOpenCheckout();
+              toolResponseStr += "I've opened the checkout form for you to confirm your details and proceed to payment. ";
+            } else {
+              onInitPayment(call.args.amount as number);
+              toolResponseStr += "I've opened the secure payment form for you. ";
+            }
           }
         }
         
@@ -910,6 +953,33 @@ export function Receptionist({
             >
               {/* Mini Cart Header / Toggle */}
               <div className="shrink-0 bg-card/50 border-b border-white/5 pb-2 transition-all">
+                {activeOrder && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    className="bg-accent/10 border-b border-accent/20 px-6 py-3 flex items-center justify-between overflow-hidden"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center animate-pulse">
+                        <Clock className="w-4 h-4 text-accent" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-accent">Order Status</span>
+                          <span className="w-1 h-1 rounded-full bg-accent/40" />
+                          <span className="text-[9px] font-mono text-white/50">#{activeOrder.id.slice(-6).toUpperCase()}</span>
+                        </div>
+                        <p className="text-xs font-bold text-white capitalize">{activeOrder.status}...</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[8px] font-black uppercase tracking-widest text-secondary block mb-0.5">Est. {activeOrder.isDelivery ? "Arrival" : "Ready"}</span>
+                      <span className="text-xs font-mono font-bold text-accent">
+                        {new Date(activeOrder.estimatedDeliveryTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
                 <div 
                   onClick={() => setIsCartOpen(!isCartOpen)}
                   className="px-6 py-4 flex items-center justify-between cursor-pointer group active:bg-white/5 transition-colors"
@@ -985,7 +1055,7 @@ export function Receptionist({
                         
                         <div className="pt-4 border-t border-white/5 flex gap-2">
                            <button 
-                             onClick={() => onInitPayment(calculateTotal().total)}
+                             onClick={() => onOpenCheckout ? onOpenCheckout() : onInitPayment(calculateTotal().total)}
                              className="flex-1 bg-accent text-bg py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-orange-accent hover:text-white transition-all shadow-xl shadow-accent/10"
                            >
                              Checkout

@@ -95,6 +95,28 @@
     "/reviews/{reviewId}": {
       "schema": "Review",
       "description": "Collection of customer reviews."
+    },
+    "/admins/{adminId}": {
+      "schema": {
+        "title": "Admin",
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "boostrapped": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "description": "Admin users list."
+    },
+    "/test/{testId}": {
+      "schema": {
+        "title": "Test",
+        "type": "object",
+        "properties": {
+          "connection": { "type": "string" }
+        }
+      },
+      "description": "Connection test collection."
     }
   }
 }
