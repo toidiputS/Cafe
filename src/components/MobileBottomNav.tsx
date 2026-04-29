@@ -9,8 +9,7 @@ interface MobileBottomNavProps {
 
 export function MobileBottomNav({ onToggleAssistant, onToggleSidebar, activeSection }: MobileBottomNavProps) {
   const scrollToTop = () => {
-    const el = document.querySelector('main');
-    el?.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const scrollToMenu = () => {

@@ -340,7 +340,7 @@ export default function App() {
       />
 
       <div className={cn(
-        "flex flex-col h-[calc(100vh-64px)] h-[calc(100dvh-64px)] overflow-hidden relative transition-all duration-500",
+        "flex flex-col flex-1 transition-all duration-500",
         isAssistantOpen ? "lg:pr-[400px]" : "lg:pr-0"
       )}>
         {/* Admin Panel */}
@@ -350,6 +350,22 @@ export default function App() {
               onClose={() => setShowAdminPanel(false)} 
               menu={sortedMenu} 
               onMenuUpdate={fetchMenu} 
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Click-away Backdrop */}
+        <AnimatePresence>
+          {(isSidebarOpen || (isAssistantOpen && window.innerWidth < 1024)) && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setIsSidebarOpen(false);
+                if (window.innerWidth < 1024) setIsAssistantOpen(false);
+              }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45]"
             />
           )}
         </AnimatePresence>
@@ -370,8 +386,8 @@ export default function App() {
         </AnimatePresence>
 
         {/* Center: Hero & Menu */}
-        <div className="flex-1 overflow-visible border-r border-border-dim flex flex-col">
-          <main id="main-content" aria-label="Menu and Featured Items" className="flex-1 overflow-y-auto custom-scrollbar pwa-safe-bottom">
+        <div className="flex-1 flex flex-col">
+          <main id="main-content" aria-label="Menu and Featured Items" className="flex-1 pwa-safe-bottom">
             <Hero isFullHeight={isSidebarOpen} specials={heroSpecials} />
             
             <MenuSection 
@@ -384,8 +400,8 @@ export default function App() {
             <ReviewSection />
           </main>
 
-          <footer aria-label="Contact and Legal Information" className="p-10 pb-32 md:pb-10 border-t border-border-dim bg-card flex flex-col items-center gap-6 pwa-safe-bottom">
-            <div className="flex gap-8 text-[10px] font-black uppercase tracking-[0.2em] text-secondary">
+          <footer aria-label="Contact and Legal Information" className="p-6 pb-24 md:pb-6 border-t border-border-dim bg-card flex flex-col items-center gap-4 pwa-safe-bottom">
+            <div className="flex gap-6 text-[8px] font-black uppercase tracking-[0.2em] text-secondary">
               <button 
                 onClick={() => {
                   const el = document.getElementById('menu');
@@ -398,8 +414,7 @@ export default function App() {
               <button onClick={() => setIsAssistantOpen(true)} className="lg:hidden hover:text-accent transition-colors">AI WAITRESS</button>
               <button 
                 onClick={() => {
-                  const el = document.querySelector('main');
-                  el?.scrollTo({ top: 0, behavior: 'smooth' });
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }} 
                 className="hover:text-accent transition-colors"
               >

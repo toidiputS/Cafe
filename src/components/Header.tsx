@@ -20,27 +20,32 @@ export function Header({ isAdmin, user, onOpenAdmin, categories, isSidebarOpen, 
 
   return (
     <header aria-label="Main Navigation" className="fixed top-0 left-0 right-0 z-50 bg-bg/80 backdrop-blur-md border-b border-border-dim/50 pwa-safe-top">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between relative">
+      <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between relative">
         <div className="flex items-center gap-4">
           <button 
             onClick={onToggleSidebar}
-            className="p-2 hover:bg-white/5 rounded-lg transition-colors text-secondary hover:text-accent"
+            className="p-1.5 hover:bg-white/5 rounded-lg transition-colors text-secondary hover:text-accent"
             title={isSidebarOpen ? "Close Information" : "Open Information"}
           >
-            {isAssistantOpen ? <X className="w-5 h-5 md:hidden" /> : (isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />)}
+            {isAssistantOpen ? <X className="w-4 h-4 md:hidden" /> : (isSidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />)}
           </button>
 
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center rotate-3 shadow-lg shadow-accent/20">
-              <Coffee className="w-6 h-6 text-bg" />
+          <button 
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
+            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center rotate-3 shadow-lg shadow-accent/20">
+              <Coffee className="w-5 h-5 text-bg" />
             </div>
             <div className="hidden sm:block">
-              <span className="font-display text-[15px] font-black text-accent tracking-tighter block leading-none">THE BRIDGE CAFÉ</span>
+              <span className="font-display text-[13px] font-black text-accent tracking-tighter block leading-none">THE BRIDGE CAFÉ</span>
             </div>
-          </div>
+          </button>
         </div>
         
-        <nav className="hidden md:flex items-center gap-8 text-[11px] font-black uppercase tracking-widest text-secondary">
+        <nav className="hidden md:flex items-center gap-6 text-[9px] font-black uppercase tracking-widest text-secondary">
           {[
             {
               label: "Specials",
@@ -142,7 +147,7 @@ export function Header({ isAdmin, user, onOpenAdmin, categories, isSidebarOpen, 
         <div className="flex items-center gap-4">
           <button 
             onClick={onToggleAssistant}
-            className="bg-accent text-bg px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-[0.1em] hover:bg-orange-accent hover:text-white transition-all shadow-lg shadow-accent/20 active:scale-95 whitespace-nowrap min-w-[120px]"
+            className="bg-accent text-bg px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-[0.1em] hover:bg-orange-accent hover:text-white transition-all shadow-lg shadow-accent/20 active:scale-95 whitespace-nowrap min-w-[100px]"
           >
             {isAssistantOpen ? "MENU" : "ORDER"}
           </button>

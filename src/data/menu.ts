@@ -49,14 +49,14 @@ export const CATEGORY_METADATA: Record<string, {
   "Weekly Soups and Specials": {
     navLabel: "Specials",
     isMainFood: true,
-    description: "New specials every Monday!"
+    description: "Chef-inspired creations that change every Monday. From seasonal stews to artisanal sandwiches, explore what's new this week!"
   },
   "Breakfast": {
     groupLabel: "Food",
     isMainFood: true,
     showAllDay: true,
     subHeader: "Breakfast All Day",
-    description: "Our items change periodically, so keep checking in with us! Craving something not on the menu? Call us – we make every item to order! Breakfast is served all day!"
+    description: "Rise and shine with Manchester's favorite breakfast! We use farm-fresh eggs and premium local ingredients. Craving something unique? We make every item to order just for you!"
   },
   "Lunch": {
     groupLabel: "Food",
@@ -120,7 +120,7 @@ export const SUBCATEGORY_ORDER: Record<string, string[]> = {
 
 export const SUBCATEGORY_METADATA: Record<string, { subHeader?: string, description?: string, bannerBlocks?: string[] }> = {
   "Soups": {
-    description: "Always made fresh, our soups are a great light lunch or a hearty addition to a sandwich. Served with crackers. Small $4.00 or Large $5.00."
+    description: "Simmered slowly in-house daily. Always made fresh, our soups are the perfect light lunch or a hearty companion to any sandwich. Served with crisp crackers. Small $4.00 or Large $5.00."
   },
   "Bagels and Spreads": {
     bannerBlocks: ["Bagel Choices: Plain • Sesame • Everything • Cinnamon Raisin • Asiago • Wheat • Onion"]
@@ -152,7 +152,7 @@ export const SUBCATEGORY_METADATA: Record<string, { subHeader?: string, descript
     description: "Straight Up Juices: Apple • Carrot • Beet • Celery"
   },
   "Smoothie Shack": {
-    description: "We use all fresh fruits & veggies! Small - $5.00, Medium - $6.50, Large - $8.00\n\nAll smoothies can be made dairy free with soy or almond milk for an extra $1.00"
+    description: "Hand-crafted with 100% real fruits and garden-fresh veggies. No syrups or artificial flavors—just pure, refreshing vitality in every sip. Small - $5.00, Medium - $6.50, Large - $8.00\n\nMake it dairy-free with creamy soy or almond milk for just $1.00."
   },
   "Bridge Breakfast": {},
   "Bridge Lunch": {},
@@ -202,7 +202,7 @@ export const MENU: MenuItem[] = [
     id: "b-sw-ec",
     name: "Egg & Cheese",
     price: 3.25,
-    description: "Served on your choice of Bread, Bagel, English Muffin or Croissant",
+    description: "A classic morning staple: two fresh-cracked eggs and premium melting cheese on your choice of toasted bread, bagel, English muffin, or a flaky croissant.",
     category: "Breakfast",
     subcategory: "Breakfast Sandwiches",
     sortOrder: 1
@@ -251,7 +251,7 @@ export const MENU: MenuItem[] = [
     name: "“The Supremo” Burrito",
     price: 7.00,
     options: ["Ham", "Bacon", "Sausage", "Veggies"],
-    description: "Egg, Cheese, Meat, Potato & Veggies! Add sour cream or guacamole for $0.75! Served w/ salsa on your choice of wrap: White, Wheat or Sun-Dried Tomato",
+    description: "The ultimate breakfast feast: a large flour tortilla packed with fluffy eggs, Sharp cheddar, your choice of savory meat, golden home fries, and zesty garden veggies.",
     category: "Breakfast",
     subcategory: "Breakfast Burritos",
     sortOrder: 3
@@ -404,7 +404,7 @@ export const MENU: MenuItem[] = [
     id: "l-sw-lulu",
     name: "The Lu Lu",
     price: 10.50,
-    description: "Albacore tuna, tomato & cheddar cheese",
+    description: "Our signature tuna melt: premium albacore tuna salad, vine-ripened tomato, and Sharp Wisconsin cheddar, pressed until gooey and golden on artisanal bread.",
     category: "Lunch",
     subcategory: "Signature Paninis and Sandwiches"
   },
@@ -412,7 +412,7 @@ export const MENU: MenuItem[] = [
     id: "l-sw-cali-blt",
     name: "California BLT",
     price: 11.50,
-    description: "Turkey, crisp bacon, Monterey Jack cheese, lettuce, tomato, avocado spread, ranch dressing, served on focaccia",
+    description: "Elevated comfort: oven-roasted turkey, thick-cut cherrywood smoked bacon, Monterey Jack cheese, buttery avocado, and creamy ranch on house-baked rosemary focaccia.",
     category: "Lunch",
     subcategory: "Signature Paninis and Sandwiches"
   },
@@ -452,7 +452,7 @@ export const MENU: MenuItem[] = [
     id: "l-sw-bridge",
     name: "\"The Bridge\"",
     price: 11.50,
-    description: "Grilled chicken, fresh mozzarella, pesto, balsamic reduction, served on focaccia",
+    description: "The Cafe's namesake: tender marinated grilled chicken, melty fresh mozzarella, and zesty house-made pesto finished with a rich balsamic reduction on warm focaccia.",
     category: "Lunch",
     subcategory: "Signature Paninis and Sandwiches"
   },

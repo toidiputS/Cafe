@@ -79,15 +79,15 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
   return (
     <div className={cn(
       "w-full flex flex-col bg-[#0a0a0a] text-white",
-      menuItemId ? "h-full p-0" : "min-h-[600px] p-8 md:p-16 border-t border-white/5"
+      menuItemId ? "h-full p-0" : "min-h-[500px] p-6 md:p-10 border-t border-white/5"
     )}>
       <div className="max-w-4xl mx-auto w-full flex flex-col h-full flex-1">
-        <div className="flex justify-between items-center mb-12">
+        <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="font-display text-4xl italic text-orange-accent">
+            <h2 className="font-display text-2xl italic text-orange-accent">
               {menuItemName ? `${menuItemName} Reviews` : 'Guest Book'}
             </h2>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-secondary mt-2">
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-secondary mt-1">
               {menuItemName ? 'What people are saying' : 'Share your dining experience'}
             </p>
           </div>
