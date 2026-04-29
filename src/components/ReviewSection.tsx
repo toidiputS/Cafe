@@ -78,16 +78,16 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
 
   return (
     <div className={cn(
-      "w-full h-full flex flex-col bg-[#0a0a0a] text-white",
-      menuItemId ? "p-0" : "p-8 md:p-16 border-t border-white/5"
+      "w-full flex flex-col bg-[#0a0a0a] text-white",
+      menuItemId ? "h-full p-0" : "min-h-[600px] p-8 md:p-16 border-t border-white/5"
     )}>
-      <div className="max-w-4xl mx-auto w-full flex flex-col h-full">
-        <div className="flex justify-between items-center mb-8">
+      <div className="max-w-4xl mx-auto w-full flex flex-col h-full flex-1">
+        <div className="flex justify-between items-center mb-12">
           <div>
-            <h2 className="font-display text-3xl italic text-orange-accent">
+            <h2 className="font-display text-4xl italic text-orange-accent">
               {menuItemName ? `${menuItemName} Reviews` : 'Guest Book'}
             </h2>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-secondary mt-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-secondary mt-2">
               {menuItemName ? 'What people are saying' : 'Share your dining experience'}
             </p>
           </div>
@@ -98,11 +98,25 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-8 pr-4 custom-scrollbar mb-8">
+        <div className={cn(
+          "flex-1 overflow-y-auto space-y-8 pr-4 custom-scrollbar mb-8",
+          reviews.length === 0 && "flex items-center justify-center p-12 bg-white/[0.02] rounded-[3rem] border border-dashed border-white/10"
+        )}>
           <AnimatePresence mode="popLayout">
             {reviews.length === 0 ? (
-              <div className="py-20 text-center opacity-30 italic">
-                No reviews yet. Be the first to share your thoughts!
+              <div className="text-center space-y-6">
+                <div className="italic text-secondary/60 text-lg">
+                  "No reviews yet. Be the first to share your thoughts!"
+                </div>
+                {!showForm && (
+                   <button
+                    onClick={() => setShowForm(true)}
+                    className="px-8 py-4 bg-accent text-bg rounded-xl font-black uppercase text-[10px] tracking-[0.3em] flex items-center justify-center gap-3 hover:bg-orange-accent transition-all mx-auto"
+                  >
+                    <MessageSquare size={16} />
+                    Sign the Guest Book
+                  </button>
+                )}
               </div>
             ) : (
               reviews.map((review) => (
@@ -141,7 +155,10 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
           </AnimatePresence>
         </div>
 
-        <div className="shrink-0 bg-card/40 border border-white/10 p-6 rounded-[2rem] backdrop-blur-sm">
+        <div className={cn(
+          "shrink-0 bg-card/40 border border-white/10 p-6 rounded-[2rem] backdrop-blur-sm",
+          reviews.length === 0 && !showForm && "hidden"
+        )}>
           {!showForm ? (
             <button
               onClick={() => setShowForm(true)}

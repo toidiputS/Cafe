@@ -43,7 +43,7 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
   }, [highlightedCategory]);
 
   return (
-    <section id="menu" className="p-4 md:p-10 pt-0 overflow-hidden relative">
+    <section id="menu" className="p-4 md:p-10 pt-0 overflow-hidden relative pb-4 pl-3 mt-0">
       <ReviewModal 
         isOpen={!!reviewModalItem} 
         onClose={() => setReviewModalItem(null)} 
@@ -57,35 +57,58 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
         onAdd={(item, qty, opts, cust) => onOrder(item.name, qty, opts, cust, Array.isArray(item.price) ? item.price[0] : item.price)}
       />
 
-      <div className="mb-24 mt-12 max-w-5xl mx-auto px-4">
-        <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-accent mb-8 opacity-50">Quick Navigation</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-12 gap-y-12">
-          {categories.map((category) => {
+      <div className="mb-24 mt-12 max-w-5xl mx-auto px-4 pt-0">
+        <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-accent opacity-50 pt-0 pb-0 -mt-[21px] mb-[21px]">Quick Navigation</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-12 gap-y-12 -mt-[11px]">
+          {categories.map((category, catIdx) => {
             const catMenu = menu.filter(item => item.category === category);
             if (catMenu.length === 0) return null;
             const subcatNames = Array.from(new Set(catMenu.map(i => i.subcategory || ""))).filter(Boolean);
             
             return (
-              <div key={category} className="space-y-4">
+              <div 
+                key={category} 
+                className={cn(
+                  "space-y-4",
+                  catIdx === 2 && "mt-0 ml-0", // Selector 4 logic (part 1)
+                  catIdx === 3 && "mt-0 ml-0", // Selector 5 logic
+                  catIdx === 5 && "-mt-[61px]", // Selector 15/23 logic
+                )}
+                style={catIdx === 2 ? { paddingTop: "-16px" } : {}} // Selector 4 logic (part 2) - though -16px padding is invalid, I'll apply it as requested
+              >
                 <button
                   onClick={() => {
                     const el = document.getElementById(`cat-${category.toLowerCase().replace(/\s+/g, '-')}`);
                     el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
-                  className="font-display italic text-2xl text-primary hover:text-accent transition-colors font-black uppercase tracking-tighter text-left group"
+                  className={cn(
+                    "font-display italic text-2xl text-primary hover:text-accent transition-colors font-black uppercase tracking-tighter text-left group",
+                    catIdx === 2 && "mb-[5px]", // Selector 13
+                    catIdx === 3 && "-mt-4", // Selector 7
+                    catIdx === 4 && "pt-[-6px]", // Selector 16
+                  )}
                 >
                   {CATEGORY_METADATA[category]?.navLabel || category}
                   <div className="h-0.5 w-0 group-hover:w-full bg-accent transition-all duration-300" />
                 </button>
-                <div className="flex flex-col gap-2">
-                  {subcatNames.map(sub => (
+                <div 
+                  className={cn(
+                    "flex flex-col gap-2",
+                    catIdx === 4 && "-mt-[14px]", // Selector 28
+                  )}
+                >
+                  {subcatNames.map((sub, subIdx) => (
                     <button
                       key={sub}
                       onClick={() => {
                         const el = document.getElementById(`subcat-${category.toLowerCase().replace(/\s+/g, '-')}-${sub.toLowerCase().replace(/\s+/g, '-')}`);
                         el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }}
-                      className="text-[11px] font-bold uppercase tracking-widest text-secondary hover:text-white transition-colors text-left"
+                      className={cn(
+                        "text-[11px] font-bold uppercase tracking-widest text-secondary hover:text-white transition-colors text-left",
+                        catIdx === 0 && subIdx === 1 && "mb-0 mt-0 pt-[-8px] pb-[-8px]", // Selector 12
+                        catIdx === 1 && subIdx === 5 && "mb-[-40px]", // Selector 10
+                      )}
                     >
                       {sub}
                     </button>

@@ -36,7 +36,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
 
   return (
     <section className={cn(
-      "px-6 md:px-16 pt-8 pb-12 transition-all duration-500 bg-bg",
+      "px-6 md:px-16 pt-[9px] pb-12 transition-all duration-500 bg-bg",
       !isFullHeight && "h-auto"
     )}>
       <div className="flex flex-col gap-12 max-w-7xl mx-auto w-full">
@@ -54,8 +54,8 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
             animate={{ opacity: 1, scale: 1 }}
             className="font-display text-[32px] sm:text-[70px] md:text-[90px] font-black leading-[0.82] tracking-tighter text-accent mb-8 flex flex-col items-center text-center"
           >
-            <span className="pt-[21px]">THE BRIDGE</span>
-            <span className="pt-[21px]">CAFÉ.</span>
+            <span className="pt-[0px]">THE BRIDGE</span>
+            <span className="pt-[7px]">CAFÉ.</span>
           </motion.h1>
           
           <motion.div 
@@ -64,7 +64,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
             transition={{ delay: 0.2 }}
             className="flex flex-col items-center w-full"
           >
-            <p className="text-[13px] sm:text-[18px] md:text-[22px] font-semibold text-[#8EB08E]/90 leading-tight italic font-display text-center mb-6 max-w-2xl px-4 pt-[21px]">
+            <p className="text-[13px] sm:text-[18px] md:text-[22px] font-semibold text-[#8EB08E]/90 leading-tight italic font-display text-center mb-6 max-w-2xl px-4 pt-[0px]">
               At The Bridge Café on Elm, we prepare everything in-house with only the freshest ingredients, herbs, and spices.
             </p>
             
@@ -80,7 +80,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
             </motion.div>
 
             {/* Features (Desktop & Mobile) */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-8 w-full mt-12 px-2 max-w-5xl border-t border-white/5 pt-[69px] relative">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-8 w-full mt-0 px-2 max-w-5xl border-t border-white/5 pt-[18px] relative">
               {features.map((feature) => (
                 <div 
                   key={feature.id}
