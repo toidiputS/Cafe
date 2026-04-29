@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { GoogleGenAI, Type } from "@google/genai";
 import { BUSINESS_INFO, MENU, CATEGORY_METADATA, type MenuItem } from "../data/menu";
 import { Send, User, Bot, ShoppingCart, Trash2, X, LogIn, Award, MapPin, CheckCircle2, Clock, ArrowLeft, Mic, MicOff, RotateCcw, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "../lib/utils";
-import { auth, db, signIn } from "../lib/firebase";
+import { auth, db, signIn, handleFirestoreError, OperationType } from "../lib/firebase";
 import { 
   collection, 
   addDoc, 
@@ -30,14 +29,20 @@ interface Message {
   suggestions?: string[];
 }
 
+const GeminiType = {
+  STRING: "STRING",
+  NUMBER: "NUMBER",
+  BOOLEAN: "BOOLEAN",
+  OBJECT: "OBJECT",
+  ARRAY: "ARRAY"
+};
+
 interface LoyaltyProfile {
   name: string;
   phoneNumber: string;
   loyaltyPoints: number;
   address?: string;
 }
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 interface ReceptionistProps {
   menu: MenuItem[];
@@ -178,10 +183,24 @@ export function Receptionist({
     }
   }, [lastInteraction, menu, cart]);
 
+  const callAIProxy = async (params: any): Promise<any> => {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "AI Proxy Error");
+    }
+    
+    return await response.json();
+  };
+
   const callAIWithRetry = async (params: any, retries = 5, delay = 2000): Promise<any> => {
     try {
-      // @ts-ignore - handled by external SDK wrapper if present, or standard SDK
-      return await (ai.models?.generateContent?.(params) || ai.getGenerativeModel({ model: params.model }).generateContent(params));
+      return await callAIProxy(params);
     } catch (error: any) {
       const isQuotaError = 
         error?.message?.includes("RESOURCE_EXHAUSTED") || 
@@ -231,7 +250,7 @@ export function Receptionist({
             RESTRICTION: Do NOT list the whole menu. Just ask about THIS specific item. 1-2 sentences max.
           `;
           try {
-            const result = await ai.models.generateContent({
+            const result = await callAIProxy({
               model: "gemini-3-flash-preview",
               contents: [
                 ...messages.map(m => ({
@@ -292,24 +311,34 @@ export function Receptionist({
           createdAt: serverTimestamp(),
           estimatedDeliveryTime: new Date(Date.now() + 45 * 60 * 1000).toISOString()
         };
-        const orderRef = await addDoc(collection(db, "orders"), orderData);
-        setLastPlacedOrder({ id: orderRef.id, ...orderData });
-        
-        if (user && loyalty) {
-          const pointsEarned = Math.floor(total);
-          const pointsToDeduct = discount * 10;
-          await updateDoc(doc(db, "customers", user.uid), {
-            loyaltyPoints: Math.max(0, loyalty.loyaltyPoints - pointsToDeduct + pointsEarned),
-            updatedAt: serverTimestamp()
-          });
-          await fetchLoyaltyProfile(user.uid);
+        const orderPath = "orders";
+        const customerPath = user ? `customers/${user.uid}` : null;
+        try {
+          const orderRef = await addDoc(collection(db, orderPath), orderData);
+          setLastPlacedOrder({ id: orderRef.id, ...orderData });
+          
+          if (user && loyalty && customerPath) {
+            const pointsEarned = Math.floor(total);
+            const pointsToDeduct = discount * 10;
+            try {
+              await updateDoc(doc(db, "customers", user.uid), {
+                loyaltyPoints: Math.max(0, loyalty.loyaltyPoints - pointsToDeduct + pointsEarned),
+                updatedAt: serverTimestamp()
+              });
+              await fetchLoyaltyProfile(user.uid);
+            } catch (e) {
+              handleFirestoreError(e, OperationType.UPDATE, customerPath);
+            }
+          }
+          
+          setCart([]);
+          setDiscount(0);
+          setIsDelivery(false);
+          setDeliveryAddress("");
+          setMessages(prev => [...prev, { role: "bot", content: "Payment successful! Your order has been sent to the kitchen." }]);
+        } catch (e) {
+          handleFirestoreError(e, OperationType.WRITE, orderPath);
         }
-        
-        setCart([]);
-        setDiscount(0);
-        setIsDelivery(false);
-        setDeliveryAddress("");
-        setMessages(prev => [...prev, { role: "bot", content: "Payment successful! Your order has been sent to the kitchen." }]);
       });
     }
   }, [onPaymentSuccess, cart, isDelivery, deliveryAddress, user, loyalty, discount]);
@@ -333,6 +362,7 @@ export function Receptionist({
   }, [messages]);
 
   const fetchLoyaltyProfile = async (uid: string) => {
+    const path = `customers/${uid}`;
     try {
       const docRef = doc(db, "customers", uid);
       const docSnap = await getDoc(docRef);
@@ -340,7 +370,7 @@ export function Receptionist({
         setLoyalty(docSnap.data() as LoyaltyProfile);
       }
     } catch (e) {
-      console.error("Error fetching loyalty:", e);
+      handleFirestoreError(e, OperationType.GET, path);
     }
   };
 
@@ -417,7 +447,7 @@ export function Receptionist({
 
     const { total: currentTotal } = calculateTotal();
     try {
-      const response = await ai.models.generateContent({
+      const response = await callAIProxy({
         model: "gemini-3-flash-preview",
         contents: [
           ...messages.map(m => ({
@@ -426,8 +456,7 @@ export function Receptionist({
           })),
           { role: "user", parts: [{ text: userMsg }] }
         ],
-        config: {
-          systemInstruction: `You are a professional AI Waitress for The Bridge Café. 
+        systemInstruction: `You are a professional AI Waitress for The Bridge Café. 
           Business Info: ${JSON.stringify(BUSINESS_INFO)}
           Address: 1117 Elm Street, Manchester, NH 03101 (Next to Anthem)
           Hours: 6am-5pm Mon-Fri, 6am-4pm Sat & Sun. Breakfast served all day!
@@ -467,13 +496,13 @@ export function Receptionist({
                 name: "addToCart",
                 description: "Adds an item from the menu with customizations.",
                 parameters: {
-                  type: Type.OBJECT,
+                  type: GeminiType.OBJECT,
                   properties: {
-                    itemName: { type: Type.STRING },
-                    quantity: { type: Type.NUMBER },
-                    options: { type: Type.STRING },
-                    customizations: { type: Type.STRING },
-                    price: { type: Type.NUMBER, description: "The specific price of the item if multiple sizes exist (e.g. 4.00 for Small soup, 5.00 for Large)" }
+                    itemName: { type: GeminiType.STRING },
+                    quantity: { type: GeminiType.NUMBER },
+                    options: { type: GeminiType.STRING },
+                    customizations: { type: GeminiType.STRING },
+                    price: { type: GeminiType.NUMBER, description: "The specific price of the item if multiple sizes exist (e.g. 4.00 for Small soup, 5.00 for Large)" }
                   },
                   required: ["itemName"]
                 }
@@ -482,9 +511,9 @@ export function Receptionist({
                 name: "removeFromCart",
                 description: "Removes an item from the user's cart.",
                 parameters: {
-                  type: Type.OBJECT,
+                  type: GeminiType.OBJECT,
                   properties: {
-                    itemName: { type: Type.STRING }
+                    itemName: { type: GeminiType.STRING }
                   },
                   required: ["itemName"]
                 }
@@ -493,11 +522,11 @@ export function Receptionist({
                 name: "updateDeliveryInfo",
                 description: "Updates whether it is a delivery, the address, and the delivery type.",
                 parameters: {
-                  type: Type.OBJECT,
+                  type: GeminiType.OBJECT,
                   properties: {
-                    isDelivery: { type: Type.BOOLEAN },
-                    address: { type: Type.STRING },
-                    deliveryType: { type: Type.STRING, enum: ["standard", "express", "scheduled"] }
+                    isDelivery: { type: GeminiType.BOOLEAN },
+                    address: { type: GeminiType.STRING },
+                    deliveryType: { type: GeminiType.STRING, enum: ["standard", "express", "scheduled"] }
                   },
                   required: ["isDelivery"]
                 }
@@ -506,10 +535,10 @@ export function Receptionist({
                 name: "signUpForLoyalty",
                 description: "Register for loyalty. Can optionally include a delivery address to save for future orders.",
                 parameters: {
-                  type: Type.OBJECT,
+                  type: GeminiType.OBJECT,
                   properties: { 
-                    phoneNumber: { type: Type.STRING },
-                    address: { type: Type.STRING, description: "Home or office address for delivery" }
+                    phoneNumber: { type: GeminiType.STRING },
+                    address: { type: GeminiType.STRING, description: "Home or office address for delivery" }
                   },
                   required: ["phoneNumber"]
                 }
@@ -518,11 +547,11 @@ export function Receptionist({
                 name: "placeOrder",
                 description: "Save final order to server.",
                 parameters: {
-                  type: Type.OBJECT,
+                  type: GeminiType.OBJECT,
                   properties: {
-                    customerName: { type: Type.STRING },
-                    isDelivery: { type: Type.BOOLEAN },
-                    address: { type: Type.STRING }
+                    customerName: { type: GeminiType.STRING },
+                    isDelivery: { type: GeminiType.BOOLEAN },
+                    address: { type: GeminiType.STRING }
                   },
                   required: ["customerName", "isDelivery"]
                 }
@@ -530,15 +559,15 @@ export function Receptionist({
               {
                 name: "checkOrderStatus",
                 description: "Check latest order status.",
-                parameters: { type: Type.OBJECT, properties: {} }
+                parameters: { type: GeminiType.OBJECT, properties: {} }
               },
               {
                 name: "initiatePayment",
                 description: "Show the secure payment form. ONLY use this when the user is ready to pay. You must confirm the final total and delivery/carryout status before calling this.",
                 parameters: {
-                  type: Type.OBJECT,
+                  type: GeminiType.OBJECT,
                   properties: {
-                    amount: { type: Type.NUMBER, description: "Total amount to pay in USD" }
+                    amount: { type: GeminiType.NUMBER, description: "Total amount to pay in USD" }
                   },
                   required: ["amount"]
                 }
@@ -547,9 +576,9 @@ export function Receptionist({
                 name: "highlightMenuItem",
                 description: "Scrolls the main menu to the specified item and highlights it visually. Use this when the user asks about a specific item or when you suggest one.",
                 parameters: {
-                  type: Type.OBJECT,
+                  type: GeminiType.OBJECT,
                   properties: {
-                    itemName: { type: Type.STRING }
+                    itemName: { type: GeminiType.STRING }
                   },
                   required: ["itemName"]
                 }
@@ -558,9 +587,9 @@ export function Receptionist({
                 name: "highlightCategory",
                 description: "Scrolls the main menu to a specific category header and highlights it. Best for broad questions or category browsing.",
                 parameters: {
-                  type: Type.OBJECT,
+                  type: GeminiType.OBJECT,
                   properties: {
-                    categoryName: { type: Type.STRING }
+                    categoryName: { type: GeminiType.STRING }
                   },
                   required: ["categoryName"]
                 }
@@ -569,9 +598,9 @@ export function Receptionist({
                 name: "applyLoyaltyDiscount",
                 description: "Applies a discount from loyalty points. 10 points = $10 discount.",
                 parameters: {
-                  type: Type.OBJECT,
+                  type: GeminiType.OBJECT,
                   properties: {
-                    pointsToRedeem: { type: Type.NUMBER, description: "Number of points to redeem (multiple of 10)" }
+                    pointsToRedeem: { type: GeminiType.NUMBER, description: "Number of points to redeem (multiple of 10)" }
                   },
                   required: ["pointsToRedeem"]
                 }
@@ -580,17 +609,16 @@ export function Receptionist({
                 name: "cancelOrder",
                 description: "Cancels an order by ID.",
                 parameters: {
-                  type: Type.OBJECT,
+                  type: GeminiType.OBJECT,
                   properties: {
-                    orderId: { type: Type.STRING }
+                    orderId: { type: GeminiType.STRING }
                   },
                   required: ["orderId"]
                 }
               }
             ]
           }]
-        }
-      });
+        });
 
       const calls = response.functionCalls;
       let toolResponseStr = "";
@@ -620,16 +648,21 @@ export function Receptionist({
             if (!user) {
               toolResponseStr += "Please log in first. ";
             } else {
-              await setDoc(doc(db, "customers", user.uid), {
-                name: user.displayName || "Valued Customer",
-                phoneNumber: call.args.phoneNumber,
-                address: call.args.address || null,
-                loyaltyPoints: 25, // Sign-up bonus
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-              });
-              await fetchLoyaltyProfile(user.uid);
-              toolResponseStr += `Welcome to The Bridge Rewards! We've added 25 bonus points to your account to get you started. ${call.args.address ? "Address saved as well." : ""}`;
+              const path = `customers/${user.uid}`;
+              try {
+                await setDoc(doc(db, "customers", user.uid), {
+                  name: user.displayName || "Valued Customer",
+                  phoneNumber: call.args.phoneNumber,
+                  address: call.args.address || null,
+                  loyaltyPoints: 25, // Sign-up bonus
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp()
+                });
+                await fetchLoyaltyProfile(user.uid);
+                toolResponseStr += `Welcome to The Bridge Rewards! We've added 25 bonus points to your account to get you started. ${call.args.address ? "Address saved as well." : ""}`;
+              } catch (error) {
+                handleFirestoreError(error, OperationType.WRITE, path);
+              }
             }
           }
           if (call.name === "highlightMenuItem") {
@@ -677,24 +710,29 @@ export function Receptionist({
                   createdAt: serverTimestamp(),
                   estimatedDeliveryTime: new Date(Date.now() + 45 * 60 * 1000).toISOString()
                 };
-                const orderRef = await addDoc(collection(db, "orders"), orderData);
-                
-                setLastPlacedOrder({ id: orderRef.id, ...orderData });
-                
-                if (user && loyalty) {
-                  const pointsEarned = Math.floor(total);
-                  const pointsToDeduct = discount * 10;
-                  await updateDoc(doc(db, "customers", user.uid), {
-                    loyaltyPoints: Math.max(0, loyalty.loyaltyPoints - pointsToDeduct + pointsEarned),
-                    updatedAt: serverTimestamp()
-                  });
-                  await fetchLoyaltyProfile(user.uid);
+                const path = "orders";
+                try {
+                  const orderRef = await addDoc(collection(db, path), orderData);
+                  
+                  setLastPlacedOrder({ id: orderRef.id, ...orderData });
+                  
+                  if (user && loyalty) {
+                    const pointsEarned = Math.floor(total);
+                    const pointsToDeduct = discount * 10;
+                    await updateDoc(doc(db, "customers", user.uid), {
+                      loyaltyPoints: Math.max(0, loyalty.loyaltyPoints - pointsToDeduct + pointsEarned),
+                      updatedAt: serverTimestamp()
+                    });
+                    await fetchLoyaltyProfile(user.uid);
+                  }
+                  setCart([]);
+                  setDiscount(0);
+                  setIsDelivery(false);
+                  setDeliveryAddress("");
+                  toolResponseStr += `Order confirmed! ID: ${orderRef.id}. `;
+                } catch (error) {
+                  handleFirestoreError(error, OperationType.WRITE, path);
                 }
-                setCart([]);
-                setDiscount(0);
-                setIsDelivery(false);
-                setDeliveryAddress("");
-                toolResponseStr += `Order confirmed! ID: ${orderRef.id}. `;
               }
             }
           }
@@ -702,9 +740,10 @@ export function Receptionist({
             if (!user) {
               toolResponseStr += "Please log in to check your orders. ";
             } else {
+              const path = "orders";
               try {
                 const q = query(
-                  collection(db, "orders"), 
+                  collection(db, path), 
                   where("customerId", "==", user.uid), 
                   orderBy("createdAt", "desc"), 
                   limit(1)
@@ -719,8 +758,7 @@ export function Receptionist({
                   toolResponseStr += `Your latest order (#${snap.docs[0].id.slice(-6)}) is currently: ${o.status}. ${o.isDelivery ? `Estimated delivery: ${formattedTime}` : `Estimated ready time: ${formattedTime}`}. `;
                 }
               } catch (err) {
-                console.error("Order status query failed:", err);
-                toolResponseStr += "I'm having trouble retrieving your order status right now. ";
+                handleFirestoreError(err, OperationType.LIST, path);
               }
             }
           }
@@ -730,7 +768,7 @@ export function Receptionist({
           }
         }
         
-        const followUp = await ai.models.generateContent({
+        const followUp = await callAIProxy({
           model: "gemini-3-flash-preview",
           contents: [
             ...messages.map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content + (m.suggestions?.length ? "\n" + m.suggestions.map(s => `[[${s}]]`).join(" ") : "") }] })),

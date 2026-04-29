@@ -15,7 +15,7 @@ import {
   MapPin,
   ShoppingCart
 } from "lucide-react";
-import { auth, db, signOut, signIn } from "../lib/firebase";
+import { auth, db, signOut, signIn, handleFirestoreError, OperationType } from "../lib/firebase";
 import { 
   collection, 
   query, 
@@ -76,9 +76,10 @@ export function ProfilePopover({ user, loyalty, cart, setCart, onClose, cancelOr
         setLoading(false);
         return;
       }
+      const path = "orders";
       try {
         const q = query(
-          collection(db, "orders"),
+          collection(db, path),
           where("customerId", "==", user.uid),
           orderBy("createdAt", "desc"),
           limit(5)
@@ -90,7 +91,7 @@ export function ProfilePopover({ user, loyalty, cart, setCart, onClose, cancelOr
         })) as Order[];
         setOrders(fetchedOrders);
       } catch (e) {
-        console.error("Error fetching orders:", e);
+        handleFirestoreError(e, OperationType.LIST, path);
       } finally {
         setLoading(false);
       }

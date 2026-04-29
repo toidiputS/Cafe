@@ -20,7 +20,7 @@ import {
   LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { db } from "../lib/firebase";
+import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { 
   collection, 
   addDoc, 
@@ -70,24 +70,28 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
   // Real-time Orders
   useEffect(() => {
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(50));
+    const path = "orders";
     const unsubscribe = onSnapshot(q, (snap) => {
       const fetchedOrders = snap.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       setOrders(fetchedOrders);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, path);
     });
     return () => unsubscribe();
   }, []);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    const path = `orders/${orderId}`;
     try {
       await updateDoc(doc(db, "orders", orderId), { 
         status: newStatus,
         updatedAt: serverTimestamp()
       });
     } catch (err) {
-      console.error("Error updating order:", err);
+      handleFirestoreError(err, OperationType.UPDATE, path);
     }
   };
 
@@ -105,12 +109,13 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
     if (!editingItem) return;
     setIsSaving(true);
     setError(null);
+    const path = "menu";
     try {
       if (editingItem.id) {
         const { id, ...data } = editingItem;
-        await updateDoc(doc(db, "menu", id), data as any);
+        await updateDoc(doc(db, path, id), data as any);
       } else {
-        await addDoc(collection(db, "menu"), {
+        await addDoc(collection(db, path), {
           ...editingItem,
           createdAt: new Date().toISOString()
         });
@@ -118,8 +123,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
       onMenuUpdate();
       setEditingItem(null);
     } catch (err) {
-      console.error("Error saving menu item:", err);
-      setError("Failed to save changes. Admin permissions required.");
+      handleFirestoreError(err, OperationType.WRITE, path);
     } finally {
       setIsSaving(false);
     }
@@ -561,9 +565,10 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                         <button
                           onClick={async () => {
                             setIsSaving(true);
+                            const path = "menu";
                             try {
                               // 1. Delete all existing menu docs
-                              const snap = await getDocs(collection(db, "menu"));
+                              const snap = await getDocs(collection(db, path));
                               const deleteBuffer = snap.docs;
                               
                               let currentBatch = writeBatch(db);
@@ -588,7 +593,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
 
                               for (const item of staticItems) {
                                 const { id, ...data } = item;
-                                const docRef = doc(db, "menu", id);
+                                const docRef = doc(db, path, id);
                                 currentBatch.set(docRef, data);
                                 count++;
                                 if (count >= 400) {
@@ -603,7 +608,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                               setSyncStatus("success");
                               setShowSyncConfirm(false);
                             } catch (err) {
-                              console.error("Sync failed:", err);
+                              handleFirestoreError(err, OperationType.WRITE, path);
                               setSyncStatus("error");
                               setError(err instanceof Error ? err.message : "Unknown error");
                             } finally {

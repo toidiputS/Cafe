@@ -15,7 +15,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { PaymentForm } from "./components/PaymentForm";
 import { motion, AnimatePresence } from "motion/react";
-import { auth, db } from "./lib/firebase";
+import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
 import { doc, updateDoc, serverTimestamp, collection, query, getDocs, setDoc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { AdminPanel } from "./components/AdminPanel";
@@ -62,8 +62,9 @@ export default function App() {
       setMenu(newMenu);
       return;
     }
+    const path = "menu";
     try {
-      const q = query(collection(db, "menu"));
+      const q = query(collection(db, path));
       const snap = await getDocs(q);
       
       if (snap.empty) {
@@ -77,20 +78,21 @@ export default function App() {
       })) as MenuItem[];
       setMenu(fetchedMenu);
     } catch (e) {
-      console.error("Error fetching menu:", e);
+      handleFirestoreError(e, OperationType.LIST, path);
       setMenu(MENU); // Fallback to static menu on error
     }
   }, []);
 
   const migrateMenu = useCallback(async () => {
+    const path = "menu";
     try {
       console.log("Migrating static menu to Firestore...");
       for (const item of MENU) {
-        await setDoc(doc(db, "menu", item.id), item);
+        await setDoc(doc(db, path, item.id), item);
       }
       fetchMenu();
     } catch (e) {
-      console.error("Migration failed:", e);
+      handleFirestoreError(e, OperationType.WRITE, path);
     }
   }, [fetchMenu]);
 
@@ -119,36 +121,46 @@ export default function App() {
       setUser(fbUser);
       if (fbUser) {
         // Check admin status
-        const adminDoc = await getDoc(doc(db, "admins", fbUser.uid));
-        let isUserAdmin = false;
-        
-        if (adminDoc.exists()) {
-          isUserAdmin = true;
-          setIsAdmin(true);
-        } else if (fbUser.email === "klutchkanobi@gmail.com") {
-          // Bootstrap first admin
-          try {
-            await setDoc(doc(db, "admins", fbUser.uid), {
-              email: fbUser.email,
-              boostrapped: true,
-              createdAt: serverTimestamp()
-            });
+        const path = `admins/${fbUser.uid}`;
+        try {
+          const adminDoc = await getDoc(doc(db, "admins", fbUser.uid));
+          let isUserAdmin = false;
+          
+          if (adminDoc.exists()) {
             isUserAdmin = true;
             setIsAdmin(true);
-          } catch (e) {
-            console.error("Admin bootstrap failed:", e);
+          } else if (fbUser.email === "klutchkanobi@gmail.com") {
+            // Bootstrap first admin
+            try {
+              await setDoc(doc(db, "admins", fbUser.uid), {
+                email: fbUser.email,
+                boostrapped: true,
+                createdAt: serverTimestamp()
+              });
+              isUserAdmin = true;
+              setIsAdmin(true);
+            } catch (e) {
+              handleFirestoreError(e, OperationType.WRITE, path);
+            }
+          } else {
+            setIsAdmin(false);
           }
-        } else {
-          setIsAdmin(false);
-        }
 
-        // If admin and menu is empty, trigger migration
-        if (isUserAdmin) {
-          const q = query(collection(db, "menu"));
-          const snap = await getDocs(q);
-          if (snap.empty) {
-            migrateMenu();
+          // If admin and menu is empty, trigger migration
+          if (isUserAdmin) {
+            const menuPath = "menu";
+            try {
+              const q = query(collection(db, menuPath));
+              const snap = await getDocs(q);
+              if (snap.empty) {
+                migrateMenu();
+              }
+            } catch (e) {
+              handleFirestoreError(e, OperationType.LIST, menuPath);
+            }
           }
+        } catch (e) {
+          handleFirestoreError(e, OperationType.GET, path);
         }
       } else {
         setIsAdmin(false);
@@ -212,6 +224,7 @@ export default function App() {
   }, [menu]);
 
   const cancelOrder = useCallback(async (orderId: string) => {
+    const path = `orders/${orderId}`;
     try {
       const orderRef = doc(db, "orders", orderId);
       await updateDoc(orderRef, {
@@ -220,7 +233,7 @@ export default function App() {
       });
       return `Order ${orderId} has been cancelled successfully.`;
     } catch (e) {
-      console.error("Error cancelling order:", e);
+      handleFirestoreError(e, OperationType.UPDATE, path);
       return `Failed to cancel order ${orderId}.`;
     }
   }, []);

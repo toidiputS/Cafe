@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Star, MessageSquare, Send, X, User } from 'lucide-react';
-import { db, auth } from '../lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, limit, where } from 'firebase/firestore';
 import { cn } from '../lib/utils';
 import { type MenuItem } from '../data/menu';
@@ -37,12 +37,15 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
       q = query(collection(db, 'reviews'), where('menuItemId', '==', menuItemId), orderBy('createdAt', 'desc'), limit(10));
     }
 
+    const path = 'reviews';
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedReviews = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Review[];
       setReviews(fetchedReviews);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, path);
     });
 
     return () => unsubscribe();
@@ -53,8 +56,9 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
     if (rating === 0 || !comment.trim() || !userName.trim()) return;
 
     setIsSubmitting(true);
+    const path = 'reviews';
     try {
-      await addDoc(collection(db, 'reviews'), {
+      await addDoc(collection(db, path), {
         userId: auth.currentUser?.uid || null,
         userName,
         rating,
@@ -66,7 +70,7 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
       setComment('');
       setShowForm(false);
     } catch (error) {
-      console.error("Error adding review: ", error);
+      handleFirestoreError(error, OperationType.WRITE, path);
     } finally {
       setIsSubmitting(false);
     }

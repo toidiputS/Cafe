@@ -28,7 +28,39 @@ async function startServer() {
 
   // Health check
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    res.json({ 
+      status: "ok",
+      hasAiKey: !!process.env.GEMINI_API_KEY,
+      hasStripeKey: !!process.env.STRIPE_SECRET_KEY
+    });
+  });
+
+  // AI Chat Proxy
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { contents, systemInstruction, tools, model = "gemini-3-flash-preview" } = req.body;
+      const key = process.env.GEMINI_API_KEY;
+      
+      if (!key) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+      }
+
+      const { GoogleGenAI } = await import("@google/genai");
+      const genAI = new GoogleGenAI({ apiKey: key });
+      
+      // Use the models.generateContent API if available, or the standard one
+      // @ts-ignore
+      const result = await genAI.models.generateContent({
+        model,
+        contents,
+        config: { systemInstruction, tools }
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("AI Proxy Error:", error);
+      res.status(500).json({ error: error.message || "Internal AI Error" });
+    }
   });
 
   // Payment Intent API
