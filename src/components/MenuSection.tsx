@@ -1,8 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { type MenuItem, CATEGORY_METADATA, SUBCATEGORY_METADATA, SUBCATEGORY_ORDER } from "../data/menu";
-import { Star, MessageSquare, Plus } from "lucide-react";
 import { ReviewModal } from "./ReviewModal";
 import { ItemCustomizerModal } from "./ItemCustomizerModal";
 
@@ -10,13 +8,13 @@ import Markdown from "react-markdown";
 
 interface MenuSectionProps {
   menu: MenuItem[];
+  cart: any[];
   onOrder: (name: string, qty?: number, options?: string, customizations?: string, specificPrice?: number) => void;
   highlightedItemId: string | null;
   highlightedCategory: string | null;
 }
 
-export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCategory }: MenuSectionProps) {
-  // Use the order from CATEGORY_METADATA for rendering
+export function MenuSection({ menu, cart, onOrder, highlightedItemId, highlightedCategory }: MenuSectionProps) {
   const categories = Object.keys(CATEGORY_METADATA);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const categoryRefs = useRef<{ [key: string]: HTMLHeadingElement | null }>({});
@@ -43,7 +41,7 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
   }, [highlightedCategory]);
 
   return (
-    <section id="menu" className="p-4 md:p-10 pt-0 overflow-hidden relative pb-4 pl-3 mt-0">
+    <section id="menu" className="menu-classic">
       <ReviewModal 
         isOpen={!!reviewModalItem} 
         onClose={() => setReviewModalItem(null)} 
@@ -57,61 +55,7 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
         onAdd={(item, qty, opts, cust) => onOrder(item.name, qty, opts, cust, Array.isArray(item.price) ? item.price[0] : item.price)}
       />
 
-      <div className="mb-16 mt-8 max-w-5xl mx-auto px-4 pt-0">
-        <h2 className="text-[9px] font-black uppercase tracking-[0.3em] text-accent opacity-50 pt-0 pb-0 -mt-[15px] mb-[15px]">Quick Navigation</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-12 gap-y-6 -mt-[8px]">
-          {categories.map((category, catIdx) => {
-            const catMenu = menu.filter(item => item.category === category);
-            if (catMenu.length === 0) return null;
-            const subcatNames = Array.from(new Set(catMenu.map(i => i.subcategory || ""))).filter(Boolean);
-            
-            return (
-              <div 
-                key={category} 
-                className={cn(
-                  "space-y-4",
-                  catIdx === 5 && "lg:-mt-16",
-                )}
-              >
-                <button
-                  onClick={() => {
-                    const el = document.getElementById(`cat-${category.toLowerCase().replace(/\s+/g, '-')}`);
-                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                  className={cn(
-                    "font-display italic text-xl text-primary hover:text-accent transition-colors font-black uppercase tracking-tighter text-left group",
-                  )}
-                >
-                  {CATEGORY_METADATA[category]?.navLabel || category}
-                  <div className="h-0.5 w-0 group-hover:w-full bg-accent transition-all duration-300" />
-                </button>
-                <div 
-                  className={cn(
-                    "flex flex-col gap-2",
-                  )}
-                >
-                  {subcatNames.map((sub, subIdx) => (
-                    <button
-                      key={sub}
-                      onClick={() => {
-                        const el = document.getElementById(`subcat-${category.toLowerCase().replace(/\s+/g, '-')}-${sub.toLowerCase().replace(/\s+/g, '-')}`);
-                        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }}
-                      className={cn(
-                        "text-[11px] font-bold uppercase tracking-widest text-secondary hover:text-white transition-colors text-left",
-                      )}
-                    >
-                      {sub}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="space-y-20">
+      <div className="menu-classic-inner">
         {categories.map((category, index) => {
           const catMenu = menu.filter(item => item.category === category);
           const meta = CATEGORY_METADATA[category];
@@ -120,7 +64,6 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
           const lastMeta = index > 0 ? CATEGORY_METADATA[categories[index - 1]] : null;
           const showGroupLabel = meta?.groupLabel && meta.groupLabel !== lastMeta?.groupLabel;
 
-          // Use the strict order defined in metadata
           const definedSubcatOrder = SUBCATEGORY_ORDER[category] || [];
           const actualSubcatNames = Array.from(new Set(catMenu.map(i => i.subcategory || "")));
           const subcatNames = definedSubcatOrder.length > 0 
@@ -129,151 +72,107 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
 
           return (
             <React.Fragment key={category}>
+              {/* ─── Group Header (Food, Drinks, Catering) ─── */}
               {showGroupLabel && (
-                <div id={`group-${meta.groupLabel.toLowerCase()}`} className="relative border-y border-white/5 bg-white/[0.01] overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-b from-orange-accent/5 to-transparent pointer-events-none" />
-                  <div className="max-w-7xl mx-auto py-12 px-6 relative z-10">
-                    <h2 className="font-display text-center text-[64px] leading-[0.8] text-orange-accent italic font-black uppercase tracking-tighter opacity-10 absolute left-1/2 -translate-x-1/2 top-4 select-none whitespace-nowrap">
-                      {meta.groupLabel}
-                    </h2>
-                    <div className="text-center">
-                      <h2 className="font-display text-3xl text-primary italic font-black uppercase tracking-tighter mb-8 relative inline-block">
-                        {meta.groupLabel}
-                        <div className="absolute -bottom-2 left-0 w-full h-0.5 bg-orange-accent shadow-[0_0_10px_rgba(255,107,0,0.5)]" />
-                      </h2>
-                      
-                      {/* Sub-navigation for the group */}
-                      <div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 pt-2">
-                        {Object.keys(CATEGORY_METADATA)
-                          .filter(c => CATEGORY_METADATA[c].groupLabel === meta.groupLabel)
-                          .map(c => (
-                            <button
-                              key={c}
-                              onClick={() => {
-                                const el = document.getElementById(`cat-${c.toLowerCase().replace(/\s+/g, '-')}`);
-                                el?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+                <div id={`group-${meta.groupLabel!.toLowerCase()}`} className="menu-group-header">
+                  <hr className="menu-divider" />
+                  <h2 className="menu-group-title">{meta.groupLabel}</h2>
+
+                  {/* Sub-navigation links for the group */}
+                  {meta.groupLabel === "Food" && (
+                    <div className="menu-group-nav">
+                      {Object.keys(CATEGORY_METADATA)
+                        .filter(c => CATEGORY_METADATA[c].groupLabel === meta.groupLabel)
+                        .map((c, i, arr) => (
+                          <React.Fragment key={c}>
+                            <a
+                              href={`#cat-${c.toLowerCase().replace(/\s+/g, '-')}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                document.getElementById(`cat-${c.toLowerCase().replace(/\s+/g, '-')}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                               }}
-                              className="group relative px-1 py-0.5"
+                              className="menu-group-nav-link"
                             >
-                              <span className="text-[12px] font-black uppercase tracking-[0.3em] text-secondary group-hover:text-accent transition-colors">
-                                {CATEGORY_METADATA[c].navLabel || c}
-                              </span>
-                              <div className="absolute -bottom-0.5 left-0 w-0 h-[1px] bg-accent transition-all duration-300 group-hover:w-full" />
-                            </button>
-                          ))}
-                      </div>
+                              {CATEGORY_METADATA[c].navLabel || c}
+                            </a>
+                            {i < arr.length - 1 && <span className="menu-group-nav-sep" />}
+                          </React.Fragment>
+                        ))}
                     </div>
-                  </div>
+                  )}
+
+                  {/* Food group description */}
+                  {meta.groupLabel === "Food" && (
+                    <p className="menu-group-desc">
+                      Our items change periodically, so keep checking in with us! Craving something not on the menu? Call us – we make every item to order! Breakfast is served all day!
+                    </p>
+                  )}
                 </div>
               )}
-              <div id={`cat-${category.toLowerCase().replace(/\s+/g, '-')}`} className={cn("menu-category scroll-mt-24 relative max-w-5xl mx-auto", !meta?.hideHeader && "pt-12")}>
+
+              {/* ─── Category ─── */}
+              <div id={`cat-${category.toLowerCase().replace(/\s+/g, '-')}`} className="menu-category-block scroll-mt-20">
                 {!meta?.hideHeader && (
-                  <div className="mb-8 text-left flex flex-col items-start px-2">
-                    <h3 className="font-display italic text-3xl text-primary relative z-10 mb-4 font-black tracking-tight pt-[24px]">
+                  <div className="menu-category-header">
+                    <h3 
+                      ref={(el) => { categoryRefs.current[category] = el; }}
+                      className="menu-category-title"
+                    >
                       {category}
+                      {meta?.showAllDay && <span className="menu-allday-badge">All Day</span>}
                     </h3>
-                    {meta?.subHeader && (
-                      <h4 className="text-secondary font-display italic text-xl mb-6 font-black">
-                        {meta.subHeader}
-                      </h4>
-                    )}
                     {meta?.description && (
-                      <div className="text-secondary text-sm italic space-y-4 max-w-4xl mb-8 leading-relaxed whitespace-pre-line opacity-90 border-l-2 border-orange-accent/30 pl-4">
-                        {meta.description}
-                      </div>
+                      <p className="menu-category-desc">{meta.description}</p>
                     )}
                   </div>
                 )}
 
-              <AnimatePresence>
-                {highlightedCategory === category && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 1.02 }}
-                    className="absolute inset-x-[-10px] inset-y-[-10px] bg-orange-accent/5 border border-orange-accent/20 rounded-2xl pointer-events-none z-0"
-                  />
+                {meta?.bannerBlocks && (
+                  <div className="menu-banner-blocks">
+                    {meta.bannerBlocks.map((block, idx) => (
+                      <p key={idx} className="menu-banner-text">{block}</p>
+                    ))}
+                  </div>
                 )}
-              </AnimatePresence>
 
-              {meta?.bannerBlocks && (
-                <div className="mb-10 space-y-4 px-2 border-l-4 border-accent/20 pl-4">
-                  {meta.bannerBlocks.map((block, idx) => (
-                    <div key={idx} className="flex flex-col gap-1">
-                      {block.split(':').length > 1 ? (
-                        <>
-                          <span className="text-[14px] font-black uppercase text-primary leading-tight tracking-tight">{block.split(':')[0]}</span>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1">
-                            {block.split(':')[1].split('•').map((item, i) => (
-                              <span key={i} className="text-[12px] font-bold italic text-secondary flex items-center gap-2">
-                                {item.trim()}
-                                {i < block.split(':')[1].split('•').length - 1 && <span className="opacity-30 text-[10px]">●</span>}
-                              </span>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        <span className="text-[13px] font-bold text-primary italic leading-snug">{block}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="space-y-16">
+                {/* ─── Subcategories ─── */}
                 {subcatNames.map((subcatName) => {
                   const subcatItems = catMenu.filter(item => (item.subcategory || "") === subcatName);
                   const subcatMeta = SUBCATEGORY_METADATA[subcatName];
 
                   return (
-                    <div key={subcatName} className="space-y-8 px-2">
+                    <div key={subcatName} className="menu-subcategory-block">
                       {subcatName && (
-                        <div className="space-y-4">
-                          <h4 
+                        <div className="menu-subcategory-header">
+                          <h4
                             id={`subcat-${category.toLowerCase().replace(/\s+/g, '-')}-${subcatName.toLowerCase().replace(/\s+/g, '-')}`}
-                            className="text-orange-accent font-display italic text-xl font-black border-b border-white/5 pb-2 uppercase tracking-tighter"
+                            className="menu-subcategory-title"
                           >
                             {subcatName}
+                            {subcatMeta?.subHeader && (
+                              <span className="menu-subcategory-subtitle"> – {subcatMeta.subHeader}</span>
+                            )}
                           </h4>
-                          {subcatMeta?.subHeader && (
-                            <p className="text-accent text-[13px] font-black uppercase tracking-widest italic">
-                              {subcatMeta.subHeader}
-                            </p>
-                          )}
                           {subcatMeta?.description && (
-                            <div className="text-secondary text-sm italic space-y-2 max-w-3xl leading-relaxed whitespace-pre-line border-l-2 border-white/10 pl-4 markdown-body">
+                            <div className="menu-subcategory-desc">
                               <Markdown>{subcatMeta.description}</Markdown>
                             </div>
                           )}
                           {subcatMeta?.bannerBlocks && (
-                            <div className="space-y-4 py-2">
+                            <div className="menu-banner-blocks">
                               {subcatMeta.bannerBlocks.map((block, idx) => (
-                                <div key={idx} className="flex flex-col gap-1">
-                                  {block.split(':').length > 1 ? (
-                                    <>
-                                      <span className="text-[16px] font-black uppercase text-primary leading-tight">{block.split(':')[0]}</span>
-                                      <div className="flex flex-wrap gap-x-2 gap-y-1">
-                                        {block.split(':')[1].split('•').map((item, i) => (
-                                          <span key={i} className="text-[13px] font-bold italic text-secondary flex items-center gap-2">
-                                            {item.trim()}
-                                            {i < block.split(':')[1].split('•').length - 1 && <span className="opacity-30 text-[10px]">●</span>}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <span className="text-[14px] font-bold text-primary italic">{block}</span>
-                                  )}
-                                </div>
+                                <p key={idx} className="menu-banner-text">{block}</p>
                               ))}
                             </div>
                           )}
                         </div>
                       )}
                       
-                      <div className="grid grid-cols-1 gap-y-10">
-                        {subcatItems.map((item, itemIdx) => {
+                      {/* ─── Menu Items ─── */}
+                      <div className="menu-items-list">
+                        {subcatItems.map((item) => {
                           const isHighlighted = highlightedItemId === item.id;
+                          const isInCart = cart.some(ci => ci.id === item.id);
                           
                           return (
                             <div 
@@ -289,76 +188,32 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
                                 }
                               }}
                               className={cn(
-                                "w-full text-left flex flex-col group cursor-pointer transition-all relative z-10 px-0 py-0 outline-none",
-                                isHighlighted && "scale-[1.01]"
+                                "menu-item",
+                                isHighlighted && "menu-item-highlighted",
+                                isInCart && "menu-item-selected"
                               )}
                             >
-                              <div className={cn(
-                                "space-y-1 relative",
-                                category === "Drinks" && subcatName === "Smoothie Shack" && (itemIdx === 1 || itemIdx === 2) && "-mt-10"
-                              )}>
-                                <AnimatePresence>
-                                  {isHighlighted && (
-                                    <motion.div
-                                      initial={{ x: "-100%" }}
-                                      animate={{ x: "0%" }}
-                                      exit={{ x: "100%" }}
-                                      transition={{ duration: 0.8, repeat: Infinity, repeatType: "reverse" }}
-                                      className="absolute inset-0 bg-gradient-to-r from-orange-accent/0 via-orange-accent/10 to-orange-accent/0 rounded-lg pointer-events-none"
-                                    />
-                                  )}
-                                </AnimatePresence>
-                                <div className="flex justify-between items-baseline group-hover:text-orange-accent transition-colors gap-8">
-                                  <span className="font-black text-lg tracking-tight leading-tight uppercase font-sans">
-                                    {item.name}
-                                  </span>
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setReviewModalItem({ id: item.id, name: item.name });
-                                      }}
-                                      role="button"
-                                      className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded-lg transition-all text-secondary hover:text-accent cursor-pointer"
-                                      title="View Reviews"
-                                    >
-                                      <MessageSquare size={14} />
-                                    </div>
-                                    <div
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setCustomizerItem(item);
-                                      }}
-                                      role="button"
-                                      className="p-1.5 bg-accent/10 hover:bg-accent text-accent hover:text-bg rounded-lg transition-all flex items-center justify-center cursor-pointer"
-                                      title="Customize & Add"
-                                    >
-                                      <Plus size={16} strokeWidth={3} />
-                                    </div>
-                                  </div>
-                                </div>
-                                {item.category !== "Catering" && (
-                                  <div className="text-orange-accent font-black text-sm tracking-widest font-sans flex items-center gap-3">
-                                    <span>
-                                      {Array.isArray(item.price) 
-                                        ? item.price.map(p => `$${p.toFixed(2)}`).join(", ")
-                                        : item.price === 0 
-                                          ? "Call for Pricing" 
-                                          : `$${item.price.toFixed(2)}`}
-                                    </span>
-                                    {item.isSpecial && (
-                                      <span className="bg-orange-accent/10 text-orange-accent text-[10px] font-black uppercase px-2 py-0.5 rounded shadow-sm border border-orange-accent/20">
-                                        Weekly Special
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                                {item.description && (
-                                  <div className="text-sm text-secondary/90 leading-relaxed font-sans max-w-4xl group-hover:text-secondary transition-colors whitespace-pre-line markdown-body">
-                                    <Markdown>{item.description}</Markdown>
-                                  </div>
-                                )}
+                              <div className="flex justify-between items-start">
+                                <h5 className="menu-item-name">{item.name}</h5>
+                                {isInCart && <span className="menu-item-selected-tag">Selected</span>}
                               </div>
+                              {item.category !== "Catering" && (
+                                <p className="menu-item-price">
+                                  {Array.isArray(item.price) 
+                                    ? item.price.map(p => `$${p.toFixed(2)}`).join(", ")
+                                    : item.price === 0 
+                                      ? "Call for Pricing" 
+                                      : `$${item.price.toFixed(2)}`}
+                                  {item.isSpecial && (
+                                    <span className="menu-item-special-badge">Weekly Special</span>
+                                  )}
+                                </p>
+                              )}
+                              {item.description && (
+                                <div className="menu-item-desc">
+                                  <Markdown>{item.description}</Markdown>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -367,11 +222,10 @@ export function MenuSection({ menu, onOrder, highlightedItemId, highlightedCateg
                   );
                 })}
               </div>
-            </div>
-          </React.Fragment>
-        );
-      })}
-    </div>
-  </section>
-);
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </section>
+  );
 }

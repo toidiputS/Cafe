@@ -56,10 +56,10 @@ export function ItemCustomizerModal({ item, onClose, onAdd }: ItemCustomizerModa
   let headerLabel = "Choose Options";
 
   if (isLunch && !isSalad) {
-    breadOptions = ["White", "Wheat", "Rye", "Rosemary Focaccia", "White Wrap", "Wheat Wrap", "Sun-Dried Tomato Wrap"];
+    breadOptions = ["White", "Wheat", "Rye", "Multi-Grain", "Rosemary Focaccia", "White Wrap", "Wheat Wrap", "Sun-Dried Tomato Wrap"];
     headerLabel = "Choose Bread or Wrap";
   } else if (isBreakfastSandwich) {
-    breadOptions = ["White", "Wheat", "Rye", "Plain Bagel", "Sesame Bagel", "Everything Bagel", "English Muffin", "Croissant"];
+    breadOptions = ["White", "Wheat", "Rye", "Multi-Grain", "Plain Bagel", "Sesame Bagel", "Everything Bagel", "English Muffin", "Croissant"];
     headerLabel = "Choose Bread/Bagel";
   } else if (isBurrito) {
     breadOptions = ["White Wrap", "Wheat Wrap", "Sun-Dried Tomato Wrap"];
@@ -67,7 +67,7 @@ export function ItemCustomizerModal({ item, onClose, onAdd }: ItemCustomizerModa
   }
 
   const sideOptions = (isLunch && !isSalad) 
-    ? ["Pasta salad", "Potato salad", "Cafe salad", "Fruit salad", "Chips"] 
+    ? ["Pasta salad", "Potato salad", "Classic Café salad", "Fruit salad", "Chips"] 
     : (isBreakfast && (item.id === "b-bag-salmon-plate" || isEggStyle || isOmelette || item.id === "b-egg-hungry"))
       ? ["Home Fries", "Fruit Cup"]
       : [];

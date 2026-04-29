@@ -392,6 +392,7 @@ export default function App() {
             
             <MenuSection 
               menu={sortedMenu}
+              cart={cart}
               onOrder={addToCart} 
               highlightedItemId={highlightedItemId} 
               highlightedCategory={highlightedCategory}
@@ -400,8 +401,9 @@ export default function App() {
             <ReviewSection />
           </main>
 
-          <footer aria-label="Contact and Legal Information" className="p-6 pb-24 md:pb-6 border-t border-border-dim bg-card flex flex-col items-center gap-4 pwa-safe-bottom">
-            <div className="flex gap-6 text-[8px] font-black uppercase tracking-[0.2em] text-secondary">
+          <footer aria-label="Contact and Legal Information" className="relative p-8 pb-24 md:pb-8 bg-card flex flex-col items-center gap-5 pwa-safe-bottom">
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            <div className="flex gap-8 text-[8px] font-black uppercase tracking-[0.25em] text-secondary/60">
               <button 
                 onClick={() => {
                   const el = document.getElementById('menu');
@@ -411,7 +413,7 @@ export default function App() {
               >
                 Menu
               </button>
-              <button onClick={() => setIsAssistantOpen(true)} className="lg:hidden hover:text-accent transition-colors">AI WAITRESS</button>
+              <button onClick={() => setIsAssistantOpen(true)} className="lg:hidden hover:text-accent transition-colors">Order</button>
               <button 
                 onClick={() => {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -421,8 +423,8 @@ export default function App() {
                 Back to Top
               </button>
             </div>
-            <p className="text-[10px] text-secondary font-medium tracking-widest opacity-30">
-              © 2026 THE BRIDGE • 1117 ELM STREET, MANCHESTER NH
+            <p className="text-[9px] text-secondary font-medium tracking-[0.3em] opacity-20 uppercase">
+              © 2026 The Bridge Café · 1117 Elm Street, Manchester NH
             </p>
           </footer>
         </div>
