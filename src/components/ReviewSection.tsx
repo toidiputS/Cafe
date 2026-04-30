@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Star, MessageSquare, Send, X, User } from 'lucide-react';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, limit, where } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import { type MenuItem } from '../data/menu';
 
 interface Review {
   id?: string;
-  userId?: string;
-  userName: string;
+  customer_id?: string;
+  user_name: string;
   rating: number;
   comment: string;
-  menuItemId?: string;
-  createdAt: any;
+  menu_item_id?: string;
+  created_at: any;
 }
 
 interface ReviewSectionProps {
@@ -27,28 +26,57 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
-  const [userName, setUserName] = useState(auth.currentUser?.displayName || '');
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUserName(session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '');
+      }
+    };
+    fetchUser();
+  }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    let q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'), limit(10));
+    let q = supabase
+      .from('reviews')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
     if (menuItemId) {
-      q = query(collection(db, 'reviews'), where('menuItemId', '==', menuItemId), orderBy('createdAt', 'desc'), limit(10));
+      q = q.eq('menu_item_id', menuItemId);
     }
 
-    const path = 'reviews';
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedReviews = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Review[];
-      setReviews(fetchedReviews);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, path);
-    });
+    const fetchReviews = async () => {
+      const { data, error } = await q;
+      if (!error && data) {
+        setReviews(data as Review[]);
+      }
+    };
 
-    return () => unsubscribe();
+    fetchReviews();
+
+    // Realtime subscription
+    const channel = supabase
+      .channel('reviews')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'reviews' },
+        (payload) => {
+          if (!menuItemId || payload.new.menu_item_id === menuItemId) {
+            setReviews(prev => [payload.new as Review, ...prev].slice(0, 20));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [menuItemId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,21 +84,25 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
     if (rating === 0 || !comment.trim() || !userName.trim()) return;
 
     setIsSubmitting(true);
-    const path = 'reviews';
     try {
-      await addDoc(collection(db, path), {
-        userId: auth.currentUser?.uid || null,
-        userName,
-        rating,
-        comment,
-        menuItemId: menuItemId || null,
-        createdAt: serverTimestamp(),
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      const { error } = await supabase
+        .from('reviews')
+        .insert({
+          customer_id: session?.user?.id,
+          user_name: userName || 'Anonymous',
+          rating,
+          comment,
+          menu_item_id: menuItemId,
+        });
+
+      if (error) throw error;
+      
       setRating(0);
       setComment('');
       setShowForm(false);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+    } catch (e) {
+      console.error("Error submitting review:", e);
     } finally {
       setIsSubmitting(false);
     }
@@ -132,9 +164,9 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
                         <User size={16} className="text-accent" />
                       </div>
                       <div>
-                        <span className="text-sm font-bold block">{review.userName}</span>
+                        <span className="text-sm font-bold block">{review.user_name}</span>
                         <span className="text-[10px] text-secondary opacity-50 uppercase tracking-widest leading-none">
-                          {review.createdAt?.toDate ? review.createdAt.toDate().toLocaleDateString() : 'Just now'}
+                          {review.created_at ? new Date(review.created_at).toLocaleDateString() : 'Just now'}
                         </span>
                       </div>
                     </div>

@@ -15,22 +15,14 @@ import {
   MapPin,
   ShoppingCart
 } from "lucide-react";
-import { auth, db, signOut, signIn, handleFirestoreError, OperationType } from "../lib/firebase";
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  orderBy, 
-  limit 
-} from "firebase/firestore";
+import { supabase } from "../lib/supabase";
 import { cn } from "../lib/utils";
 
 interface Order {
   id: string;
   total: number;
   status: string;
-  createdAt: any;
+  created_at: any;
   items: any[];
 }
 
@@ -49,6 +41,15 @@ export function ProfilePopover({ user, loyalty, cart, setCart, onClose, cancelOr
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  const signIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+  };
+
   const handleCancelOrder = async (orderId: string) => {
     setCancellingId(orderId);
     await cancelOrder(orderId);
@@ -64,9 +65,9 @@ export function ProfilePopover({ user, loyalty, cart, setCart, onClose, cancelOr
     }
   };
 
-  const executeLogout = (clearCart: boolean = true) => {
+  const executeLogout = async (clearCart: boolean = true) => {
     if (clearCart) setCart([]);
-    if (user) signOut();
+    if (user) await supabase.auth.signOut();
     onClose();
   };
 
@@ -76,22 +77,18 @@ export function ProfilePopover({ user, loyalty, cart, setCart, onClose, cancelOr
         setLoading(false);
         return;
       }
-      const path = "orders";
       try {
-        const q = query(
-          collection(db, path),
-          where("customerId", "==", user.uid),
-          orderBy("createdAt", "desc"),
-          limit(5)
-        );
-        const snap = await getDocs(q);
-        const fetchedOrders = snap.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Order[];
-        setOrders(fetchedOrders);
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('customer_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (error) throw error;
+        setOrders(data as Order[]);
       } catch (e) {
-        handleFirestoreError(e, OperationType.LIST, path);
+        console.error("Error fetching orders:", e);
       } finally {
         setLoading(false);
       }
@@ -140,7 +137,7 @@ export function ProfilePopover({ user, loyalty, cart, setCart, onClose, cancelOr
                     <span className="block text-[9px] uppercase tracking-widest text-secondary font-bold mb-1">Points</span>
                     <div className="flex items-center gap-2">
                       <Award className="w-4 h-4 text-orange-accent" />
-                      <span className="text-xl font-bold text-white">{loyalty?.loyaltyPoints || 0}</span>
+                      <span className="text-xl font-bold text-white">{loyalty?.loyalty_points || 0}</span>
                     </div>
                   </div>
                   <div className="bg-white/5 p-4 rounded-xl border border-white/10">
@@ -213,7 +210,7 @@ export function ProfilePopover({ user, loyalty, cart, setCart, onClose, cancelOr
                             <div className="flex items-center gap-1 opacity-30 mt-1">
                               <Calendar className="w-3 h-3" />
                               <span className="text-[9px] font-medium">
-                                {order.createdAt?.toDate().toLocaleDateString() || 'Today'}
+                                {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Today'}
                               </span>
                             </div>
                           </div>

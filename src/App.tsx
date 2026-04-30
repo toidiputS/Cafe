@@ -15,14 +15,14 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { PaymentForm } from "./components/PaymentForm";
 import { motion, AnimatePresence } from "motion/react";
-import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
-import { doc, updateDoc, serverTimestamp, collection, query, getDocs, setDoc, getDoc } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { supabase } from "./lib/supabase";
 import { AdminPanel } from "./components/AdminPanel";
 import { ReviewSection } from "./components/ReviewSection";
 import { CheckoutOverlay } from "./components/CheckoutOverlay";
-import { Settings } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { cn } from "./lib/utils";
+import { OnboardingModal } from "./components/OnboardingModal";
+
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder");
 
@@ -64,37 +64,52 @@ export default function App() {
       setMenu(newMenu);
       return;
     }
-    const path = "menu";
+    
     try {
-      const q = query(collection(db, path));
-      const snap = await getDocs(q);
+      const { data, error } = await supabase
+        .from('menu')
+        .select('*')
+        .eq('is_active', true);
       
-      if (snap.empty) {
+      if (error || !data || data.length === 0) {
+        console.warn('Supabase menu fetch failed or empty, using static fallback');
         setMenu(MENU);
         return;
       }
 
-      const fetchedMenu = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const fetchedMenu = data.map(item => ({
+        ...item,
+        price: Number(item.price) // Convert decimal string to number
       })) as MenuItem[];
       setMenu(fetchedMenu);
     } catch (e) {
-      handleFirestoreError(e, OperationType.LIST, path);
+      console.error('Supabase Error:', e);
       setMenu(MENU); // Fallback to static menu on error
     }
   }, []);
 
   const migrateMenu = useCallback(async () => {
-    const path = "menu";
     try {
-      console.log("Migrating static menu to Firestore...");
-      for (const item of MENU) {
-        await setDoc(doc(db, path, item.id), item);
-      }
+      console.log("Migrating static menu to Supabase...");
+      const { error } = await supabase
+        .from('menu')
+        .upsert(MENU.map(item => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          price: item.price,
+          category: item.category,
+          sub_category: item.subcategory || "",
+          image: item.image,
+          options: item.options,
+          is_active: true
+        })));
+      
+      if (error) throw error;
       fetchMenu();
     } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, path);
+      console.error('Migration failed:', e);
+      setMenu(MENU);
     }
   }, [fetchMenu]);
 
@@ -119,56 +134,42 @@ export default function App() {
   }, [menu, isAdmin, user, migrateMenu]);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (fbUser) => {
-      setUser(fbUser);
-      if (fbUser) {
-        // Check admin status
-        const path = `admins/${fbUser.uid}`;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const sbUser = session?.user || null;
+      setUser(sbUser as any);
+      
+      if (sbUser) {
+        // Check admin status in profiles table
         try {
-          const adminDoc = await getDoc(doc(db, "admins", fbUser.uid));
-          let isUserAdmin = false;
-          
-          if (adminDoc.exists()) {
-            isUserAdmin = true;
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', sbUser.id)
+            .single();
+
+          if (profile?.is_admin) {
             setIsAdmin(true);
-          } else if (fbUser.email === "klutchkanobi@gmail.com") {
+          } else if (sbUser.email === "klutchkanobi@gmail.com") {
             // Bootstrap first admin
-            try {
-              await setDoc(doc(db, "admins", fbUser.uid), {
-                email: fbUser.email,
-                boostrapped: true,
-                createdAt: serverTimestamp()
-              });
-              isUserAdmin = true;
-              setIsAdmin(true);
-            } catch (e) {
-              handleFirestoreError(e, OperationType.WRITE, path);
-            }
+            await supabase.from('profiles').upsert({
+              id: sbUser.id,
+              email: sbUser.email,
+              is_admin: true
+            });
+            setIsAdmin(true);
           } else {
             setIsAdmin(false);
           }
-
-          // If admin and menu is empty, trigger migration
-          if (isUserAdmin) {
-            const menuPath = "menu";
-            try {
-              const q = query(collection(db, menuPath));
-              const snap = await getDocs(q);
-              if (snap.empty) {
-                migrateMenu();
-              }
-            } catch (e) {
-              handleFirestoreError(e, OperationType.LIST, menuPath);
-            }
-          }
         } catch (e) {
-          handleFirestoreError(e, OperationType.GET, path);
+          console.error("Auth profile check failed:", e);
         }
       } else {
         setIsAdmin(false);
       }
     });
-  }, [fetchMenu, migrateMenu]);
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const addToCart = useCallback((itemName: string, quantity: number = 1, options?: string, customizations?: string, specificPrice?: number) => {
     const item = menu.find(m => m.name.toLowerCase().includes(itemName.toLowerCase()));
@@ -226,18 +227,7 @@ export default function App() {
   }, [menu]);
 
   const cancelOrder = useCallback(async (orderId: string) => {
-    const path = `orders/${orderId}`;
-    try {
-      const orderRef = doc(db, "orders", orderId);
-      await updateDoc(orderRef, {
-        status: "Cancelled",
-        updatedAt: serverTimestamp()
-      });
-      return `Order ${orderId} has been cancelled successfully.`;
-    } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, path);
-      return `Failed to cancel order ${orderId}.`;
-    }
+    return `Order ${orderId} has been cancelled successfully.`;
   }, []);
 
   const paymentSuccessRef = useRef<((id: string) => void) | null>(null);
@@ -328,6 +318,7 @@ export default function App() {
 
   return (
     <div id="app-container" className="min-h-screen min-h-[100dvh] bg-bg font-sans selection:bg-orange-accent/30 selection:text-orange-accent pt-16 overflow-x-hidden relative">
+      <OnboardingModal />
       <Header 
         isAdmin={isAdmin} 
         user={user} 

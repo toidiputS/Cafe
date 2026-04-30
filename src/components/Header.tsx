@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Coffee, Settings, LogIn, User, ChevronDown, Menu, X, MessageSquareText } from "lucide-react";
-import { signIn } from "../lib/firebase";
 import { cn } from "../lib/utils";
 import { motion } from "motion/react";
 

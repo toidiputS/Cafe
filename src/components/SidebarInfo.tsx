@@ -1,5 +1,5 @@
 import { BUSINESS_INFO } from "../data/menu";
-import { signIn, signOut } from "../lib/firebase";
+import { supabase } from "../lib/supabase";
 import { Settings, LogIn, LogOut, User } from "lucide-react";
 
 interface SidebarInfoProps {
@@ -60,7 +60,7 @@ export function SidebarInfo({ isAdmin, user, onOpenAdmin, onClose }: SidebarInfo
           <SectionTitle>Management</SectionTitle>
           {!user ? (
             <button 
-              onClick={() => signIn()}
+              onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
               className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 text-secondary hover:text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-lg transition-all group border border-white/5"
             >
               <LogIn className="w-3 h-3 transition-transform group-hover:translate-x-1" />
@@ -70,7 +70,7 @@ export function SidebarInfo({ isAdmin, user, onOpenAdmin, onClose }: SidebarInfo
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-[9px] text-secondary font-black uppercase tracking-widest px-1">
                 <User className="w-2.5 h-2.5 text-accent" />
-                <span className="truncate">{user.displayName || user.email}</span>
+                <span className="truncate">{user.user_metadata?.full_name || user.email}</span>
               </div>
               <div className="flex flex-col gap-2">
                 {isAdmin && (
@@ -83,7 +83,7 @@ export function SidebarInfo({ isAdmin, user, onOpenAdmin, onClose }: SidebarInfo
                   </button>
                 )}
                 <button 
-                  onClick={() => signOut()}
+                  onClick={() => supabase.auth.signOut()}
                   className="w-full py-1 text-secondary/30 hover:text-red-400 text-[9px] font-black uppercase tracking-widest transition-colors"
                 >
                   Sign Out

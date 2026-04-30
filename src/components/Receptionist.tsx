@@ -4,23 +4,7 @@ import { Send, User, Bot, ShoppingCart, Trash2, X, LogIn, Award, MapPin, CheckCi
 import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "../lib/utils";
-import { auth, db, signIn, handleFirestoreError, OperationType } from "../lib/firebase";
-import { 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  getDocs, 
-  updateDoc, 
-  doc, 
-  serverTimestamp, 
-  orderBy, 
-  limit,
-  setDoc,
-  getDoc,
-  onSnapshot
-} from "firebase/firestore";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { supabase } from "../lib/supabase";
 import { type CartItem } from "../App";
 import { ProfilePopover } from "./ProfilePopover";
 
@@ -39,10 +23,14 @@ const GeminiType = {
 };
 
 interface LoyaltyProfile {
-  name: string;
-  phoneNumber: string;
+  name?: string;
+  phoneNumber?: string;
   loyaltyPoints: number;
   address?: string;
+  totalSpent?: number;
+  ordersCount?: number;
+  tier?: "bronze" | "silver" | "gold" | "platinum";
+  memberSince?: string;
 }
 
 interface ReceptionistProps {
@@ -241,11 +229,11 @@ export function Receptionist({
             TASK: As the best waitress, you never miss a detail. Ask the user for their required choices (bread type, side, flavor, etc.) based on the ITEM DETAILS and CATEGORY CONTEXT (check bannerBlocks for choice lists).
             
             Specific Guidance for the Best Waitress:
-            - Lunch Sandwiches/Paninis: ALWAYS ask for their Choice of Bread (White, Wheat, Rye, Rosemary Focaccia) AND their Side Choice (Pasta salad, Potato salad, Cafe salad, Fruit salad, or Chips).
-            - Breakfast Sandwiches: Ask for their vessel choice (Bread, Bagel, English Muffin, or Croissant).
+            - Lunch Sandwiches/Paninis: ALWAYS ask for their Choice of Bread (White, Wheat, Rye, Rosemary Focaccia) OR Wrap (White, Wheat, Sun-Dried Tomato) AND their Side Choice (Pasta salad, Potato salad, Cafe salad, Fruit salad, or Chips).
+            - Breakfast Sandwiches: Ask for their vessel choice (White Bread, Wheat, Rye, Rosemary Focaccia, Bagel, English Muffin, or Croissant).
             - Bagels: 
                 * Ask for Bagel choice (Plain, Sesame, Everything, Cinnamon Raisin, Asiago, Wheat, Onion).
-                * If Cream Cheese: Ask for the flavor (Plain, Veggie, Pesto, Honey Walnut, Chive, Strawberry, Jalapeno).
+                * If Cream Cheese: Ask for the flavor (Plain, Vegetable, Pesto, Honey Walnut, Chive, Strawberry, Jalapeno).
                 * If PB & Jelly: Ask for the jelly (Grape or Strawberry).
             - Weekly Soups: Ask for Size choice (Small or Large).
             - Salads: Mention they are served with bread, and ask if they'd like to add Chicken ($3.50) or Steak ($5.00).
@@ -286,7 +274,7 @@ export function Receptionist({
     }
   }, [cart, isDelivery, deliveryAddress]);
 
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loyalty, setLoyalty] = useState<LoyaltyProfile | null>(null);
   
   const [isListening, setIsListening] = useState(false);
@@ -303,37 +291,39 @@ export function Receptionist({
       onPaymentSuccess(async (paymentIntentId) => {
         const { total } = calculateTotal();
         const orderData = {
-          customerId: user?.uid || "guest",
-          customerName: user?.displayName || "Guest Customer",
+          customer_id: (user as any)?.id || null,
+          customer_name: (user as any)?.user_metadata?.full_name || "Guest Customer",
           items: [...cart],
           status: "Paid",
-          paymentIntentId,
-          kitchenNotified: true,
+          payment_intent_id: paymentIntentId,
           total,
           discount,
-          isDelivery,
-          deliveryAddress,
-          createdAt: serverTimestamp(),
-          estimatedDeliveryTime: new Date(Date.now() + 45 * 60 * 1000).toISOString()
+          is_delivery: isDelivery,
+          delivery_address: deliveryAddress,
+          estimated_delivery_time: new Date(Date.now() + 45 * 60 * 1000).toISOString()
         };
-        const orderPath = "orders";
-        const customerPath = user ? `customers/${user.uid}` : null;
         try {
-          const orderRef = await addDoc(collection(db, orderPath), orderData);
-          setLastPlacedOrder({ id: orderRef.id, ...orderData });
+          const { data, error } = await supabase
+            .from('orders')
+            .insert(orderData)
+            .select()
+            .single();
+
+          if (error) throw error;
           
-          if (user && loyalty && customerPath) {
+          setLastPlacedOrder(data);
+          
+          if (user && loyalty) {
             const pointsEarned = Math.floor(total);
             const pointsToDeduct = discount * 10;
-            try {
-              await updateDoc(doc(db, "customers", user.uid), {
-                loyaltyPoints: Math.max(0, loyalty.loyaltyPoints - pointsToDeduct + pointsEarned),
-                updatedAt: serverTimestamp()
-              });
-              await fetchLoyaltyProfile(user.uid);
-            } catch (e) {
-              handleFirestoreError(e, OperationType.UPDATE, customerPath);
-            }
+            const newPoints = Math.max(0, loyalty.loyaltyPoints - pointsToDeduct + pointsEarned);
+            
+            await supabase
+              .from('profiles')
+              .update({ loyalty_points: newPoints })
+              .eq('id', (user as any).id);
+
+            await fetchLoyaltyProfile((user as any).id);
           }
           
           setCart([]);
@@ -342,22 +332,23 @@ export function Receptionist({
           setDeliveryAddress("");
           setMessages(prev => [...prev, { role: "bot", content: "Payment successful! Your order has been sent to the kitchen." }]);
         } catch (e) {
-          handleFirestoreError(e, OperationType.WRITE, orderPath);
+          console.error("Error finalizing order:", e);
         }
       });
     }
   }, [onPaymentSuccess, cart, isDelivery, deliveryAddress, user, loyalty, discount]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        await fetchLoyaltyProfile(u.uid);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const sbUser = session?.user || null;
+      setUser(sbUser as any);
+      if (sbUser) {
+        await fetchLoyaltyProfile(sbUser.id);
       } else {
         setLoyalty(null);
       }
     });
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -366,32 +357,54 @@ export function Receptionist({
       return;
     }
 
-    const path = "orders";
-    const q = query(
-      collection(db, path),
-      where("customerId", "==", user.uid),
-      orderBy("createdAt", "desc"),
-      limit(1)
-    );
+    // Initial fetch for active order
+    const fetchActiveOrder = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('customer_id', (user as any).id)
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const orderData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as any;
-        // If the order is "active" (not cancelled or completed), show it
+      if (!error && data && data.length > 0) {
+        const orderData = data[0];
         const terminalStatuses = ["Cancelled", "Delivered", "Picked Up", "Completed"];
         if (!terminalStatuses.includes(orderData.status as string)) {
           setActiveOrder(orderData);
         } else {
           setActiveOrder(null);
         }
-      } else {
-        setActiveOrder(null);
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchActiveOrder();
+
+    // Realtime subscription
+    const channel = supabase
+      .channel('order-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `customer_id=eq.${(user as any).id}`
+        },
+        (payload) => {
+          const orderData = payload.new as any;
+          const terminalStatuses = ["Cancelled", "Delivered", "Picked Up", "Completed"];
+          if (orderData && !terminalStatuses.includes(orderData.status as string)) {
+            setActiveOrder(orderData);
+          } else {
+            setActiveOrder(null);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -401,15 +414,24 @@ export function Receptionist({
   }, [messages]);
 
   const fetchLoyaltyProfile = async (uid: string) => {
-    const path = `customers/${uid}`;
     try {
-      const docRef = doc(db, "customers", uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setLoyalty(docSnap.data() as LoyaltyProfile);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', uid)
+        .single();
+      
+      if (!error && data) {
+        setLoyalty({
+          loyaltyPoints: data.loyalty_points,
+          totalSpent: Number(data.total_spent),
+          ordersCount: data.orders_count,
+          tier: data.tier as any,
+          memberSince: data.created_at
+        });
       }
     } catch (e) {
-      handleFirestoreError(e, OperationType.GET, path);
+      console.error("Error fetching loyalty profile:", e);
     }
   };
 
@@ -673,20 +695,19 @@ export function Receptionist({
             if (!user) {
               toolResponseStr += "Please log in first. ";
             } else {
-              const path = `customers/${user.uid}`;
               try {
-                await setDoc(doc(db, "customers", user.uid), {
-                  name: user.displayName || "Valued Customer",
-                  phoneNumber: call.args.phoneNumber,
-                  address: call.args.address || null,
-                  loyaltyPoints: 25, // Sign-up bonus
-                  createdAt: serverTimestamp(),
-                  updatedAt: serverTimestamp()
+                const { error } = await supabase.from('profiles').upsert({
+                  id: (user as any).id,
+                  email: (user as any).email,
+                  full_name: (user as any).user_metadata?.full_name || call.args.name || "Valued Customer",
+                  loyalty_points: 25, // Sign-up bonus
                 });
-                await fetchLoyaltyProfile(user.uid);
+                if (error) throw error;
+                await fetchLoyaltyProfile((user as any).id);
                 toolResponseStr += `Welcome to The Bridge Rewards! We've added 25 bonus points to your account to get you started. ${call.args.address ? "Address saved as well." : ""}`;
               } catch (error) {
-                handleFirestoreError(error, OperationType.WRITE, path);
+                console.error("Error signing up for loyalty:", error);
+                toolResponseStr += "I'm sorry, I couldn't sign you up for the rewards program right now. ";
               }
             }
           }
@@ -723,40 +744,47 @@ export function Receptionist({
               } else {
                 const finalAddress = (call.args.address as string) || deliveryAddress;
                 const orderData = {
-                  customerId: user?.uid || "guest",
-                  customerName: call.args.customerName,
+                  customer_id: (user as any)?.id || null,
+                  customer_name: call.args.customerName || (user as any)?.user_metadata?.full_name || "Customer",
                   items: [...cart],
                   status: "Pending",
-                  kitchenNotified: true,
                   total,
                   discount,
-                  isDelivery: call.args.isDelivery,
-                  deliveryAddress: finalAddress,
-                  createdAt: serverTimestamp(),
-                  estimatedDeliveryTime: new Date(Date.now() + 45 * 60 * 1000).toISOString()
+                  is_delivery: call.args.isDelivery,
+                  delivery_address: finalAddress,
+                  estimated_delivery_time: new Date(Date.now() + 45 * 60 * 1000).toISOString()
                 };
-                const path = "orders";
                 try {
-                  const orderRef = await addDoc(collection(db, path), orderData);
+                  const { data, error } = await supabase
+                    .from('orders')
+                    .insert(orderData)
+                    .select()
+                    .single();
+
+                  if (error) throw error;
                   
-                  setLastPlacedOrder({ id: orderRef.id, ...orderData });
+                  setLastPlacedOrder(data);
                   
                   if (user && loyalty) {
                     const pointsEarned = Math.floor(total);
                     const pointsToDeduct = discount * 10;
-                    await updateDoc(doc(db, "customers", user.uid), {
-                      loyaltyPoints: Math.max(0, loyalty.loyaltyPoints - pointsToDeduct + pointsEarned),
-                      updatedAt: serverTimestamp()
-                    });
-                    await fetchLoyaltyProfile(user.uid);
+                    const newPoints = Math.max(0, loyalty.loyaltyPoints - pointsToDeduct + pointsEarned);
+                    
+                    await supabase
+                      .from('profiles')
+                      .update({ loyalty_points: newPoints })
+                      .eq('id', (user as any).id);
+
+                    await fetchLoyaltyProfile((user as any).id);
                   }
                   setCart([]);
                   setDiscount(0);
                   setIsDelivery(false);
                   setDeliveryAddress("");
-                  toolResponseStr += `Order confirmed! ID: ${orderRef.id}. `;
+                  toolResponseStr += `Order confirmed! ID: ${data.id}. `;
                 } catch (error) {
-                  handleFirestoreError(error, OperationType.WRITE, path);
+                  console.error("Error placing order:", error);
+                  toolResponseStr += "I'm sorry, I couldn't place your order right now. ";
                 }
               }
             }
@@ -765,25 +793,26 @@ export function Receptionist({
             if (!user) {
               toolResponseStr += "Please log in to check your orders. ";
             } else {
-              const path = "orders";
               try {
-                const q = query(
-                  collection(db, path), 
-                  where("customerId", "==", user.uid), 
-                  orderBy("createdAt", "desc"), 
-                  limit(1)
-                );
-                const snap = await getDocs(q);
-                if (snap.empty) {
+                const { data, error } = await supabase
+                  .from('orders')
+                  .select('*')
+                  .eq('customer_id', (user as any).id)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .single();
+                
+                if (error || !data) {
                   toolResponseStr += "You haven't placed any orders yet. ";
                 } else {
-                  const o = snap.docs[0].data();
-                  const etaDate = new Date(o.estimatedDeliveryTime);
+                  const o = data;
+                  const etaDate = new Date(o.estimated_delivery_time);
                   const formattedTime = etaDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  toolResponseStr += `Your latest order (#${snap.docs[0].id.slice(-6)}) is currently: ${o.status}. ${o.isDelivery ? `Estimated delivery: ${formattedTime}` : `Estimated ready time: ${formattedTime}`}. `;
+                  toolResponseStr += `Your latest order (#${o.id.slice(-6)}) is currently: ${o.status}. ${o.is_delivery ? `Estimated delivery: ${formattedTime}` : `Estimated ready time: ${formattedTime}`}. `;
                 }
               } catch (err) {
-                handleFirestoreError(err, OperationType.LIST, path);
+                console.error("Error checking order status:", err);
+                toolResponseStr += "I'm sorry, I couldn't check your order status right now. ";
               }
             }
           }

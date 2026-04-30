@@ -5,6 +5,7 @@ export interface MenuItem {
   description?: string;
   category: string;
   subcategory?: string;
+  image?: string;
   options?: string[];
   isSpecial?: boolean;
   highlightColor?: string;

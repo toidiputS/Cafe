@@ -20,23 +20,7 @@ import {
   LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDocs,
-  setDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  limit,
-  Timestamp,
-  serverTimestamp,
-  writeBatch
-} from "firebase/firestore";
+import { supabase } from "../lib/supabase";
 import { type MenuItem, MENU as STATIC_MENU } from "../data/menu";
 import { cn } from "../lib/utils";
 
@@ -69,36 +53,71 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
 
   // Real-time Orders
   useEffect(() => {
-    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(50));
-    const path = "orders";
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const fetchedOrders = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setOrders(fetchedOrders);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, path);
-    });
-    return () => unsubscribe();
+    // Initial fetch
+    const fetchOrders = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (!error && data) {
+        setOrders(data);
+      }
+    };
+
+    fetchOrders();
+
+    // Realtime subscription
+    const channel = supabase
+      .channel('admin-orders')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setOrders(prev => [payload.new, ...prev].slice(0, 50));
+          } else if (payload.eventType === 'UPDATE') {
+            setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new : o));
+          } else if (payload.eventType === 'DELETE') {
+            setOrders(prev => prev.filter(o => o.id === payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
-    const path = `orders/${orderId}`;
     try {
-      await updateDoc(doc(db, "orders", orderId), { 
-        status: newStatus,
-        updatedAt: serverTimestamp()
-      });
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status: newStatus,
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
     } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, path);
+      console.error("Error updating order status:", err);
+      setError("Failed to update order status.");
     }
   };
 
   const dashboardStats = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayOrders = orders.filter(o => o.createdAt?.toDate() >= today);
+    const todayOrders = orders.filter(o => {
+      const orderDate = o.created_at ? new Date(o.created_at) : new Date();
+      return orderDate >= today;
+    });
     const totalSales = todayOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     const pendingCount = orders.filter(o => o.status === "Pending" || o.status === "Preparing").length;
     
@@ -115,21 +134,36 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
     if (!editingItem) return;
     setIsSaving(true);
     setError(null);
-    const path = "menu";
     try {
+      const dataToSave = {
+        name: editingItem.name,
+        description: editingItem.description,
+        price: editingItem.price,
+        category: editingItem.category,
+        sub_category: editingItem?.subcategory || "",
+        image: editingItem.image,
+        options: editingItem.options,
+        is_active: true
+      };
+
       if (editingItem.id) {
-        const { id, ...data } = editingItem;
-        await updateDoc(doc(db, path, id), data as any);
+        const { error } = await supabase
+          .from('menu')
+          .update(dataToSave)
+          .eq('id', editingItem.id);
+        if (error) throw error;
       } else {
-        await addDoc(collection(db, path), {
-          ...editingItem,
-          createdAt: new Date().toISOString()
-        });
+        const newId = editingItem.id || `item_${Date.now()}`;
+        const { error } = await supabase
+          .from('menu')
+          .insert({ id: newId, ...dataToSave });
+        if (error) throw error;
       }
       onMenuUpdate();
       setEditingItem(null);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, path);
+      console.error("Error saving menu item:", err);
+      setError("Failed to save menu item.");
     } finally {
       setIsSaving(false);
     }
@@ -234,7 +268,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
               <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   <div className="bg-[#1a1a1a] p-6 rounded-2xl border border-white/5 space-y-2">
-                    <Label>Today\'s Sales</Label>
+                    <Label>Today's Sales</Label>
                     <p className="text-4xl font-display font-black text-white">${dashboardStats.totalSales.toFixed(2)}</p>
                     <div className="flex items-center gap-2 text-green-400">
                       <TrendingUp className="w-3 h-3" />
@@ -271,7 +305,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                             <p className="text-xs font-bold text-white">{order.customerName || "Customer"}</p>
                             <p className="text-[10px] text-secondary font-mono mt-0.5">${(order.total || 0).toFixed(2)} • {order.status}</p>
                           </div>
-                          <span className="text-[9px] text-secondary font-mono uppercase">{order.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="text-[9px] text-secondary font-mono uppercase">{order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
                         </div>
                       ))}
                     </div>
@@ -360,7 +394,7 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                             </div>
                             <div className="flex items-center gap-2 text-secondary">
                               <Clock className="w-3 h-3" />
-                              <span className="text-[10px] font-mono">{order.createdAt?.toDate().toLocaleTimeString()}</span>
+                              <span className="text-[10px] font-mono">{order.created_at ? new Date(order.created_at).toLocaleTimeString() : 'Just now'}</span>
                             </div>
                           </div>
 
@@ -733,50 +767,39 @@ export function AdminPanel({ onClose, menu, onMenuUpdate }: AdminPanelProps) {
                         <button
                           onClick={async () => {
                             setIsSaving(true);
-                            const path = "menu";
                             try {
-                              // 1. Delete all existing menu docs
-                              const snap = await getDocs(collection(db, path));
-                              const deleteBuffer = snap.docs;
-                              
-                              let currentBatch = writeBatch(db);
-                              let count = 0;
+                              // 1. Delete all existing menu items
+                              const { error: delError } = await supabase
+                                .from('menu')
+                                .delete()
+                                .neq('id', '_dummy_'); // Hack to delete all
 
-                              for (const d of deleteBuffer) {
-                                currentBatch.delete(d.ref);
-                                count++;
-                                if (count >= 400) {
-                                  await currentBatch.commit();
-                                  currentBatch = writeBatch(db);
-                                  count = 0;
-                                }
-                              }
-                              if (count > 0) await currentBatch.commit();
+                              if (delError) throw delError;
 
                               // 2. Add static items
-                              const staticItems = STATIC_MENU;
-                              
-                              currentBatch = writeBatch(db);
-                              count = 0;
+                              const staticItems = STATIC_MENU.map(item => ({
+                                id: item.id,
+                                name: item.name,
+                                description: item.description,
+                                price: item.price,
+                                category: item.category,
+                                sub_category: item.subcategory || "",
+                                image: item.image,
+                                options: item.options,
+                                is_active: true
+                              }));
 
-                              for (const item of staticItems) {
-                                const { id, ...data } = item;
-                                const docRef = doc(db, path, id);
-                                currentBatch.set(docRef, data);
-                                count++;
-                                if (count >= 400) {
-                                  await currentBatch.commit();
-                                  currentBatch = writeBatch(db);
-                                  count = 0;
-                                }
-                              }
-                              if (count > 0) await currentBatch.commit();
+                              const { error: insError } = await supabase
+                                .from('menu')
+                                .upsert(staticItems);
 
-                              onMenuUpdate(staticItems);
+                              if (insError) throw insError;
+
+                              onMenuUpdate(STATIC_MENU);
                               setSyncStatus("success");
                               setShowSyncConfirm(false);
                             } catch (err) {
-                              handleFirestoreError(err, OperationType.WRITE, path);
+                              console.error("Sync error:", err);
                               setSyncStatus("error");
                               setError(err instanceof Error ? err.message : "Unknown error");
                             } finally {
