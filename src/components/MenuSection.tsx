@@ -104,7 +104,7 @@ export function MenuSection({ menu, cart, onOrder, highlightedItemId, highlighte
                   {/* Food group description */}
                   {meta.groupLabel === "Food" && (
                     <p className="menu-group-desc">
-                      Our items change periodically, so keep checking in with us! Craving something not on the menu? Call us – we make every item to order! Breakfast is served all day!
+                      Our items change periodically, so keep checking in with us! Craving something not on the menu? <strong>Flag down your server</strong> — we make every item to order and your waitress will take care of you right away. Breakfast is served all day!
                     </p>
                   )}
                 </div>

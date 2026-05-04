@@ -5,7 +5,6 @@ export interface MenuItem {
   description?: string;
   category: string;
   subcategory?: string;
-  image?: string;
   options?: string[];
   isSpecial?: boolean;
   highlightColor?: string;
@@ -136,15 +135,9 @@ export const SUBCATEGORY_METADATA: Record<string, { subHeader?: string, descript
   "Pancakes n' Things": {
     subHeader: "Breakfast Variety:"
   },
-  "Signature Paninis and Sandwiches": {
-    bannerBlocks: [
-      "Your Choice of Breads: White • Wheat • Rye • Rosemary Focaccia.",
-      "Your Choice of Wraps: White • Wheat • Sun-Dried Tomato",
-      "All sandwiches served with your choice of side: Pasta salad • Potato salad • Cafe salad • Fruit salad • Chips"
-    ]
-  },
+  "Signature Paninis and Sandwiches": {},
   "Freshly Tossed Salads": {
-    description: "All Salads are made fresh to order & served with a side of bread.\nMake any salad a wrap!\nAdd Chicken for $3.50, or steak for $5.00"
+    description: "All Salads are made fresh to order & served with a side of bread. Make any salad a wrap! Add Chicken for $3.50, or steak for $5.00"
   },
   "Espresso Drinks": {
     description: "Choose from whole, low-fat or skim milk, or substitute soy milk for $0.50! All espresso drinks are available in decaf, as well as hot, iced or frozen!\n\nCoffees come in small, medium, and large sizes."
@@ -173,9 +166,8 @@ export const SUBCATEGORY_METADATA: Record<string, { subHeader?: string, descript
 export const MENU: MenuItem[] = [
   // --- WEEKLY SOUPS AND SPECIALS ---
   { id: "s-chicken-rice", name: "Chicken and Rice--Gluten Free", price: [4.00, 5.00], options: ["Small", "Large"], category: "Weekly Soups and Specials", subcategory: "Soups" },
-  { id: "s-corn-chowder", name: "Corn Chowder--Gluten Free, vegetarian", price: [4.00, 5.00], options: ["Small", "Large"], category: "Weekly Soups and Specials", subcategory: "Soups" },
+  { id: "s-broccoli-cheddar", name: "Broccoli Cheddar--Gluten Free, vegetarian", price: [4.00, 5.00], options: ["Small", "Large"], category: "Weekly Soups and Specials", subcategory: "Soups" },
   { id: "s-chicken-chili", name: "Chicken Chili--Gluten Free", price: [4.00, 5.00], options: ["Small", "Large"], category: "Weekly Soups and Specials", subcategory: "Soups" },
-  { id: "s-turkey-pot-pie", name: "Turkey Pot Pie--Gluten Free", price: [4.00, 5.00], options: ["Small", "Large"], category: "Weekly Soups and Specials", subcategory: "Soups" },
 
   {
     id: "sp-bbq-ques",
@@ -199,7 +191,7 @@ export const MENU: MenuItem[] = [
     id: "sp-quinoa-salad",
     name: "Quinoa Apple Pecan Salad",
     price: 16.00,
-    description: "Quinoa, arugula, cucumbers, tomtoes, apples, tomatoes, red onion, candied pecans, dried cranberries",
+    description: "Quinoa, arugula, cucumbers, tomatoes, apples, tomatoes, red onion, candied pecans, oranges, and goat cheese, served with a white balsalmic dressing!",
     category: "Weekly Soups and Specials",
     subcategory: "Specials",
     isSpecial: true
@@ -210,14 +202,14 @@ export const MENU: MenuItem[] = [
     id: "b-sw-ec",
     name: "Egg & Cheese",
     price: 3.25,
-    description: "Served on your choice of Bread, Bagel, English Muffin or Croissant",
+    description: "A classic morning staple: two fresh-cracked eggs and premium melting cheese on your choice of toasted bread, bagel, English muffin, or a flaky croissant.",
     category: "Breakfast",
     subcategory: "Breakfast Sandwiches",
     sortOrder: 1
   },
   {
     id: "b-sw-ec-meat",
-    name: "Egg & Cheese with Ham, Bacon or Sausage",
+    name: "Egg & Cheese",
     price: 4.75,
     options: ["Ham", "Bacon", "Sausage"],
     description: "Served on your choice of Bread, Bagel, English Muffin or Croissant",
@@ -227,7 +219,7 @@ export const MENU: MenuItem[] = [
   },
   {
     id: "b-sw-ec-prem",
-    name: "Egg & Cheese with Prosciutto or Salmon",
+    name: "Egg & Cheese",
     price: 7.00,
     options: ["Prosciutto", "Smoked Salmon"],
     description: "Served on your choice of Bread, Bagel, English Muffin or Croissant",
@@ -237,7 +229,7 @@ export const MENU: MenuItem[] = [
   },
   {
     id: "b-bur-ecp",
-    name: "Egg, Cheese & Potato",
+    name: "Egg, Cheese & Potato Burrito",
     price: 5.00,
     description: "Served w/ salsa on your choice of wrap: White, Wheat or Sun-Dried Tomato",
     category: "Breakfast",
@@ -246,7 +238,7 @@ export const MENU: MenuItem[] = [
   },
   {
     id: "b-bur-ecmp",
-    name: "Egg, Cheese, Meat and Potato",
+    name: "Egg, Cheese, Meat and Potato Burrito",
     price: 6.50,
     options: ["Ham", "Bacon", "Sausage"],
     description: "Served w/ salsa on your choice of wrap: White, Wheat or Sun-Dried Tomato",
@@ -256,10 +248,10 @@ export const MENU: MenuItem[] = [
   },
   {
     id: "b-bur-supremo",
-    name: "\"The Supremo\"",
+    name: "“The Supremo” Burrito",
     price: 7.00,
     options: ["Ham", "Bacon", "Sausage", "Veggies"],
-    description: "Egg, Cheese, Meat, Potato & Veggies! Add sour cream or guacamole for $0.75! Served w/ salsa on your choice of wrap: White, Wheat or Sun-Dried Tomato",
+    description: "The ultimate breakfast feast: a large flour tortilla packed with fluffy eggs, Sharp cheddar, your choice of savory meat, golden home fries, and zesty garden veggies.",
     category: "Breakfast",
     subcategory: "Breakfast Burritos",
     sortOrder: 3
@@ -300,8 +292,10 @@ export const MENU: MenuItem[] = [
     subcategory: "Bagels and Spreads",
     sortOrder: 1
   },
-  { id: "b-bag-butter", name: "Bagel w/ Butter", price: 2.50, category: "Breakfast", subcategory: "Bagels and Spreads", sortOrder: 2 },
-  { id: "b-bag-pbj", name: "Bagel w/ PB & Jelly", price: 3.00, category: "Breakfast", subcategory: "Bagels and Spreads", sortOrder: 3 },
+  { id: "b-bag-butter", name: "Bagel w/ Butter", price: 2.50, description: "Bagel Choices: Plain • Sesame • Everything • Cinnamon Raisin • Asiago • Wheat • Onion", category: "Breakfast", subcategory: "Bagels and Spreads", sortOrder: 2 },
+  { id: "b-bag-pb", name: "Bagel w/ Peanut Butter", price: 3.00, description: "Bagel Choices: Plain • Sesame • Everything • Cinnamon Raisin • Asiago • Wheat • Onion", category: "Breakfast", subcategory: "Bagels and Spreads", sortOrder: 3 },
+  { id: "b-bag-jelly", name: "Bagel w/ Jelly", price: 2.75, description: "Bagel Choices: Plain • Sesame • Everything • Cinnamon Raisin • Asiago • Wheat • Onion. Jelly Choice: Grape or Strawberry", category: "Breakfast", subcategory: "Bagels and Spreads", sortOrder: 4 },
+  { id: "b-bag-pbj", name: "Bagel w/ PB & Jelly", price: 3.25, description: "Bagel Choices: Plain • Sesame • Everything • Cinnamon Raisin • Asiago • Wheat • Onion. Jelly Choice: Grape or Strawberry", category: "Breakfast", subcategory: "Bagels and Spreads", sortOrder: 5 },
   {
     id: "b-bag-cc",
     name: "Bagel w/ Cream Cheese",
@@ -377,7 +371,7 @@ export const MENU: MenuItem[] = [
     subcategory: "Omelettes"
   },
   { id: "b-egg-2", name: "Two Eggs", price: 6.50, category: "Breakfast", subcategory: "Eggs Any Style" },
-  { id: "b-egg-2-meat", name: "Two Eggs w/ Ham, Bacon or Sausage", price: 9.50, options: ["Ham", "Bacon", "Sausage"], category: "Breakfast", subcategory: "Eggs Any Style" },
+  { id: "b-egg-2-meat", name: "Two Eggs w/ Meat Choice", price: 9.50, options: ["Ham", "Bacon", "Sausage"], category: "Breakfast", subcategory: "Eggs Any Style" },
   { id: "b-egg-2-prosc", name: "Two Eggs w/ Proscuitto", price: 9.50, category: "Breakfast", subcategory: "Eggs Any Style" },
   { id: "b-egg-2-salmon", name: "Two Eggs w/ Salmon", price: 12.00, category: "Breakfast", subcategory: "Eggs Any Style" },
   {
@@ -389,10 +383,10 @@ export const MENU: MenuItem[] = [
     category: "Breakfast",
     subcategory: "Eggs Any Style"
   },
-  { id: "b-pancakes", name: "Stack of Pancakes", price: 6.00, category: "Breakfast", subcategory: "Pancakes n' Things" },
-  { id: "b-pancakes-chips", name: "Stack of Pancakes with Blueberries or Chocolate Chips", price: 7.50, options: ["Blueberries", "Chocolate Chips"], category: "Breakfast", subcategory: "Pancakes n' Things" },
   { id: "b-ft", name: "French Toast", price: 7.50, category: "Breakfast", subcategory: "Pancakes n' Things" },
-  { id: "b-ft-berries", name: "French Toast with Blueberries or Strawberries", price: 9.00, options: ["Blueberries", "Strawberries"], category: "Breakfast", subcategory: "Pancakes n' Things" },
+  { id: "b-ft-berries", name: "French Toast w/ Blueberries or Strawberries", price: 9.00, options: ["Blueberries", "Strawberries"], category: "Breakfast", subcategory: "Pancakes n' Things" },
+  { id: "b-pancakes", name: "Stack of Pancakes", price: 6.00, category: "Breakfast", subcategory: "Pancakes n' Things" },
+  { id: "b-pancakes-chips", name: "Stack of Pancakes w/ Blueberries or Choc. Chips", price: 7.50, options: ["Blueberries", "Chocolate Chips"], category: "Breakfast", subcategory: "Pancakes n' Things" },
   {
     id: "b-muffins",
     name: "Award Winning Muffins, Scones, and more!",
@@ -410,7 +404,7 @@ export const MENU: MenuItem[] = [
     id: "l-sw-lulu",
     name: "The Lu Lu",
     price: 10.50,
-    description: "Albacore tuna, tomato & cheddar cheese",
+    description: "Our signature tuna melt: premium albacore tuna salad, vine-ripened tomato, and Sharp Wisconsin cheddar, pressed until gooey and golden on artisanal bread.",
     category: "Lunch",
     subcategory: "Signature Paninis and Sandwiches"
   },
@@ -418,8 +412,8 @@ export const MENU: MenuItem[] = [
     id: "l-sw-cali-blt",
     name: "California BLT",
     price: 11.50,
-    description: "Turkey, crisp bacon, Monterey Jack cheese, lettuce, tomato, avocado spread, ranch dressing, served on focaccia",
     category: "Lunch",
+    description: "Elevated comfort: oven-roasted turkey, thick-cut cherrywood smoked bacon, Monterey Jack cheese, buttery avocado, and creamy ranch on house-baked rosemary focaccia.",
     subcategory: "Signature Paninis and Sandwiches"
   },
   {
@@ -458,7 +452,7 @@ export const MENU: MenuItem[] = [
     id: "l-sw-bridge",
     name: "\"The Bridge\"",
     price: 11.50,
-    description: "Grilled chicken, fresh mozzarella, pesto, balsamic reduction, served on focaccia",
+    description: "The Cafe's namesake: tender marinated grilled chicken, melty fresh mozzarella, and zesty house-made pesto finished with a rich balsamic reduction on warm focaccia.",
     category: "Lunch",
     subcategory: "Signature Paninis and Sandwiches"
   },
@@ -739,7 +733,6 @@ export const MENU: MenuItem[] = [
   { id: "dr-patty", name: "Peppermint Patty", price: [4.50, 5.00, 5.50], description: "Espresso + chocolate + peppermint, topped with steamed milk", category: "Drinks", subcategory: "Espresso Drinks" },
   { id: "dr-chai", name: "Chai Latte", price: [4.50, 5.00, 5.50], description: "Chai tea infused with steamed milk", category: "Drinks", subcategory: "Espresso Drinks" },
   { id: "dr-hotchoc", name: "Hot Chocolate", price: [3.00, 3.50, 4.00], description: "Rich chocolate infused with steamed milk", category: "Drinks", subcategory: "Espresso Drinks" },
-  { id: "dr-syrup", name: "Additional Syrup Flavors", price: [0.50, 1.00], description: "Peppermint • Banana • Blueberry • Caramel • Coconut • Almond • Peppermint • Hazelnut • Raspberry and more! Ask about our seasonal specialty flavors!", category: "Drinks", subcategory: "Espresso Drinks" },
   
   { 
     id: "dr-tea", 
