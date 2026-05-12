@@ -52,6 +52,7 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [lastInteraction, setLastInteraction] = useState<{ type: 'click' | 'add', name: string } | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (isAssistantOpen) {
@@ -318,7 +319,10 @@ export default function App() {
 
   return (
     <div id="app-container" className="min-h-screen min-h-[100dvh] bg-bg font-sans selection:bg-orange-accent/30 selection:text-orange-accent pt-16 overflow-x-hidden relative">
-      <OnboardingModal />
+      <OnboardingModal
+        forceOpen={showOnboarding}
+        onForceClose={() => setShowOnboarding(false)}
+      />
       <Header 
         isAdmin={isAdmin} 
         user={user} 
@@ -371,7 +375,7 @@ export default function App() {
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="fixed left-0 top-16 bottom-0 w-[320px] bg-bg border-r border-border-dim overflow-y-auto custom-scrollbar z-50 shadow-[20px_0_50px_rgba(0,0,0,0.5)] pwa-safe-top"
             >
-              <SidebarInfo isAdmin={isAdmin} user={user} onOpenAdmin={() => setShowAdminPanel(true)} onClose={() => setIsSidebarOpen(false)} />
+              <SidebarInfo isAdmin={isAdmin} user={user} onOpenAdmin={() => setShowAdminPanel(true)} onClose={() => setIsSidebarOpen(false)} onReplayOnboarding={() => { setShowOnboarding(false); setTimeout(() => setShowOnboarding(true), 50); }} />
             </motion.div>
           )}
         </AnimatePresence>

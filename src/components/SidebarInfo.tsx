@@ -1,15 +1,16 @@
 import { BUSINESS_INFO } from "../data/menu";
 import { supabase } from "../lib/supabase";
-import { Settings, LogIn, LogOut, User } from "lucide-react";
+import { Settings, LogIn, LogOut, User, PlayCircle } from "lucide-react";
 
 interface SidebarInfoProps {
   isAdmin: boolean;
   user: any;
   onOpenAdmin: () => void;
   onClose?: () => void;
+  onReplayOnboarding?: () => void;
 }
 
-export function SidebarInfo({ isAdmin, user, onOpenAdmin, onClose }: SidebarInfoProps) {
+export function SidebarInfo({ isAdmin, user, onOpenAdmin, onClose, onReplayOnboarding }: SidebarInfoProps) {
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
     <h3 className="font-display font-black text-[11px] text-white uppercase tracking-widest mb-3">
       {children}
@@ -96,6 +97,17 @@ export function SidebarInfo({ isAdmin, user, onOpenAdmin, onClose }: SidebarInfo
         <p className="text-[7px] uppercase tracking-[0.4em] text-secondary font-black opacity-10 text-center mt-6">
           © 2026 THE BRIDGE CAFÉ
         </p>
+
+        {onReplayOnboarding && (
+          <button
+            id="replay-onboarding-btn"
+            onClick={() => { onClose?.(); onReplayOnboarding(); }}
+            className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 text-[8px] font-black uppercase tracking-[0.25em] text-secondary/30 hover:text-accent transition-colors group"
+          >
+            <PlayCircle className="w-3 h-3 group-hover:scale-110 transition-transform" />
+            App Tour
+          </button>
+        )}
       </div>
     </aside>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, Sparkles, Coffee, Utensils, Award, ArrowRight } from 'lucide-react';
+import { X, Sparkles, Coffee, Utensils, Award, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface OnboardingStep {
@@ -37,10 +37,16 @@ const steps: OnboardingStep[] = [
   }
 ];
 
-export function OnboardingModal() {
+interface OnboardingModalProps {
+  forceOpen?: boolean;
+  onForceClose?: () => void;
+}
+
+export function OnboardingModal({ forceOpen, onForceClose }: OnboardingModalProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
+  // Auto-show on first visit
   useEffect(() => {
     const hasSeen = localStorage.getItem('hasSeenOnboarding');
     if (!hasSeen) {
@@ -48,9 +54,18 @@ export function OnboardingModal() {
     }
   }, []);
 
+  // Replay when triggered externally
+  useEffect(() => {
+    if (forceOpen) {
+      setCurrentStep(0);
+      setIsOpen(true);
+    }
+  }, [forceOpen]);
+
   const handleClose = () => {
     localStorage.setItem('hasSeenOnboarding', 'true');
     setIsOpen(false);
+    onForceClose?.();
   };
 
   const nextStep = () => {
