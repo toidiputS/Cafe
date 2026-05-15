@@ -267,6 +267,10 @@ export function OnboardingModal({ forceOpen, onForceClose, onStepChange }: Onboa
               <rect x="0" y="0" width="100%" height="100%" fill="white" />
               {spotlight && (
                 <motion.rect
+                  x={spotlight.left}
+                  y={spotlight.top}
+                  width={spotlight.width}
+                  height={spotlight.height}
                   initial={{ opacity: 0 }}
                   animate={{
                     x: spotlight.left,

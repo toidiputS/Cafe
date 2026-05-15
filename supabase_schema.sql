@@ -55,3 +55,19 @@ CREATE POLICY "Users can insert own orders" ON orders FOR INSERT WITH CHECK (aut
 
 -- Realtime: Enable for orders
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+
+
+-- 4. Reviews
+CREATE TABLE IF NOT EXISTS reviews (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_name TEXT NOT NULL,
+  rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  menu_item_id TEXT REFERENCES menu(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Everyone can view reviews" ON reviews FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert reviews" ON reviews FOR INSERT WITH CHECK (true);
+

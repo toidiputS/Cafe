@@ -141,7 +141,7 @@ export function MenuSection({ menu, cart, onOrder, highlightedItemId, highlighte
                   const subcatMeta = SUBCATEGORY_METADATA[subcatName];
 
                   return (
-                    <div key={subcatName} className="menu-subcategory-block">
+                    <div key={subcatName || "default"} className="menu-subcategory-block">
                       {subcatName && (
                         <div className="menu-subcategory-header">
                           <h4
