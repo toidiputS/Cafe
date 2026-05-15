@@ -27,19 +27,14 @@ export default defineConfig(({mode}) => {
           orientation: 'portrait',
           icons: [
             {
-              src: 'https://picsum.photos/seed/bridge-cafe/192/192',
-              sizes: '192x192',
-              type: 'image/png'
+              src: 'icon.svg',
+              sizes: 'any',
+              type: 'image/svg+xml'
             },
             {
-              src: 'https://picsum.photos/seed/bridge-cafe/512/512',
+              src: 'icon.svg',
               sizes: '512x512',
-              type: 'image/png'
-            },
-            {
-              src: 'https://picsum.photos/seed/bridge-cafe/512/512',
-              sizes: '512x512',
-              type: 'image/png',
+              type: 'image/svg+xml',
               purpose: 'any maskable'
             }
           ]

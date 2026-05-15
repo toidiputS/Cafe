@@ -32,6 +32,8 @@ export function Header({ isAdmin, user, onOpenAdmin, categories, isSidebarOpen, 
           <button 
             onClick={() => {
               window.scrollTo({ top: 0, behavior: 'smooth' });
+              document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+              document.body.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
           >

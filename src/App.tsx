@@ -419,6 +419,8 @@ export default function App() {
               <button 
                 onClick={() => {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
+                  document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+                  document.body.scrollTo({ top: 0, behavior: 'smooth' });
                 }} 
                 className="hover:text-accent transition-colors"
               >
