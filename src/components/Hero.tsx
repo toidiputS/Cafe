@@ -35,7 +35,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
   const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
 
   return (
-    <section className={cn(
+    <section id="onboard-hero" className={cn(
       "px-6 md:px-16 pt-4 pb-10 transition-all duration-500 bg-bg",
       !isFullHeight && "h-auto"
     )}>
@@ -64,7 +64,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ delay: 0.15, duration: 0.6 }}
-            className="w-16 h-[1px] bg-gradient-to-r from-transparent via-accent/40 to-transparent mt-5 mb-4"
+            className="w-16 h-px bg-linear-to-r from-transparent via-accent/40 to-transparent mt-5 mb-4"
           />
 
           <motion.p 
@@ -96,7 +96,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
           {features.map((feature) => (
             <div 
               key={feature.id}
-              className="flex flex-col items-center gap-2 text-center relative group py-4 px-2 rounded-2xl hover:bg-white/[0.03] transition-all duration-300 cursor-default"
+              className="flex flex-col items-center gap-2 text-center relative group py-4 px-2 rounded-2xl hover:bg-white/3 transition-all duration-300 cursor-default"
               onMouseEnter={() => setHoveredFeature(feature.id)}
               onMouseLeave={() => setHoveredFeature(null)}
             >
@@ -125,7 +125,7 @@ export function Hero({ isFullHeight }: { isFullHeight?: boolean, specials?: Menu
                   "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
                   hoveredFeature === feature.id 
                     ? "bg-accent/20 shadow-lg shadow-accent/10" 
-                    : "bg-white/[0.04] group-hover:bg-accent/10"
+                    : "bg-white/4 group-hover:bg-accent/10"
                 )}
               >
                 <feature.icon className={cn(

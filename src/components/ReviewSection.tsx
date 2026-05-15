@@ -109,7 +109,7 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
   };
 
   return (
-    <div className={cn(
+    <div id="onboard-reviews" className={cn(
       "w-full flex flex-col bg-[#0a0a0a] text-white",
       menuItemId ? "h-full p-0" : "min-h-[500px] p-6 md:p-10 border-t border-white/5"
     )}>
@@ -132,7 +132,7 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
 
         <div className={cn(
           "flex-1 overflow-y-auto space-y-8 pr-4 custom-scrollbar mb-8",
-          reviews.length === 0 && "flex items-center justify-center p-12 bg-white/[0.02] rounded-[3rem] border border-dashed border-white/10"
+          reviews.length === 0 && "flex items-center justify-center p-12 bg-white/2 rounded-[3rem] border border-dashed border-white/10"
         )}>
           <AnimatePresence mode="popLayout">
             {reviews.length === 0 ? (
@@ -188,7 +188,7 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
         </div>
 
         <div className={cn(
-          "shrink-0 bg-card/40 border border-white/10 p-6 rounded-[2rem] backdrop-blur-sm",
+          "shrink-0 bg-card/40 border border-white/10 p-6 rounded-4xl backdrop-blur-sm",
           reviews.length === 0 && !showForm && "hidden"
         )}>
           {!showForm ? (
@@ -254,7 +254,7 @@ export function ReviewSection({ menuItemId, menuItemName, onClose }: ReviewSecti
                 <button
                   type="submit"
                   disabled={isSubmitting || rating === 0}
-                  className="flex-[2] py-3 bg-white text-bg font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-accent transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2"
+                  className="flex-2 py-3 bg-white text-bg font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-accent transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? 'Posting...' : <><Send size={14} /> Submit Review</>}
                 </button>

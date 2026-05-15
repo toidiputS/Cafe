@@ -318,10 +318,17 @@ export default function App() {
   const heroSpecials = useMemo(() => sortedMenu.filter(m => m.isSpecial).slice(0, 3), [sortedMenu]);
 
   return (
-    <div id="app-container" className="min-h-screen min-h-[100dvh] bg-bg font-sans selection:bg-orange-accent/30 selection:text-orange-accent pt-16 overflow-x-hidden relative">
+    <div id="app-container" className="min-h-dvh bg-bg font-sans selection:bg-orange-accent/30 selection:text-orange-accent pt-16 overflow-x-hidden relative">
       <OnboardingModal
         forceOpen={showOnboarding}
-        onForceClose={() => setShowOnboarding(false)}
+        onForceClose={() => { setShowOnboarding(false); setIsSidebarOpen(false); }}
+        onStepChange={(_stepIndex, targetSelector) => {
+          if (targetSelector === '#onboard-management') {
+            setIsSidebarOpen(true);
+          } else {
+            setIsSidebarOpen(false);
+          }
+        }}
       />
       <Header 
         isAdmin={isAdmin} 
@@ -360,7 +367,7 @@ export default function App() {
                 setIsSidebarOpen(false);
                 if (window.innerWidth < 1024) setIsAssistantOpen(false);
               }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45]"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-45"
             />
           )}
         </AnimatePresence>
@@ -397,7 +404,7 @@ export default function App() {
           </main>
 
           <footer aria-label="Contact and Legal Information" className="relative p-8 pb-24 md:pb-8 bg-card flex flex-col items-center gap-5 pwa-safe-bottom">
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
             <div className="flex gap-8 text-[8px] font-black uppercase tracking-[0.25em] text-secondary/60">
               <button 
                 onClick={() => {
@@ -426,7 +433,7 @@ export default function App() {
 
         {/* Right Sidebar: AI Assistant (Fixed on desktop, Slider on mobile) */}
         <div className={cn(
-          "transition-all duration-500 overflow-visible bg-card border-l border-border-dim shadow-2xl z-[110]",
+          "transition-all duration-500 overflow-visible bg-card border-l border-border-dim shadow-2xl z-110",
           "fixed right-0 top-16 bottom-0 w-[92%] sm:w-[400px]",
           "lg:fixed lg:inset-y-0 lg:top-16 lg:right-0",
           isAssistantOpen ? "translate-x-0" : "translate-x-full"
@@ -488,7 +495,7 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[60] bg-bg/80 backdrop-blur-md flex items-center justify-center p-6"
+              className="fixed inset-0 z-60 bg-bg/80 backdrop-blur-md flex items-center justify-center p-6"
             >
               <Elements stripe={stripePromise} options={stripeOptions}>
                 <PaymentForm 

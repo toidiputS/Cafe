@@ -18,7 +18,7 @@ export function Header({ isAdmin, user, onOpenAdmin, categories, isSidebarOpen, 
   const [showDropdown, setShowDropdown] = useState<string | null>(null);
 
   return (
-    <header aria-label="Main Navigation" className="fixed top-0 left-0 right-0 z-50 bg-bg/85 backdrop-blur-xl border-b border-white/[0.06] pwa-safe-top">
+    <header aria-label="Main Navigation" className="fixed top-0 left-0 right-0 z-50 bg-bg/85 backdrop-blur-xl border-b border-white/6 pwa-safe-top">
       <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between relative">
         <div className="flex items-center gap-4">
           <button 
@@ -104,7 +104,7 @@ export function Header({ isAdmin, user, onOpenAdmin, categories, isSidebarOpen, 
               {group.items.length > 0 && (
                 <div 
                   className={cn(
-                    "absolute top-full left-0 w-48 bg-card/95 backdrop-blur-lg border border-white/[0.08] p-2 rounded-xl shadow-2xl transition-all duration-300 origin-top z-50",
+                    "absolute top-full left-0 w-48 bg-card/95 backdrop-blur-lg border border-white/8 p-2 rounded-xl shadow-2xl transition-all duration-300 origin-top z-50",
                     showDropdown === group.label ? "opacity-100 translate-y-0 scale-100 visible" : "opacity-0 -translate-y-2 scale-95 invisible"
                   )}
                 >
@@ -145,8 +145,9 @@ export function Header({ isAdmin, user, onOpenAdmin, categories, isSidebarOpen, 
 
         <div className="flex items-center gap-4">
           <button 
+            id="onboard-assistant-btn"
             onClick={onToggleAssistant}
-            className="bg-accent text-bg px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-[0.1em] hover:bg-orange-accent hover:text-white transition-all shadow-lg shadow-accent/20 active:scale-95 whitespace-nowrap min-w-[100px]"
+            className="bg-accent text-bg px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-orange-accent hover:text-white transition-all shadow-lg shadow-accent/20 active:scale-95 whitespace-nowrap min-w-[100px]"
           >
             {isAssistantOpen ? "MENU" : "ORDER"}
           </button>

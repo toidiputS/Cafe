@@ -57,7 +57,7 @@ export function SidebarInfo({ isAdmin, user, onOpenAdmin, onClose, onReplayOnboa
       </div>
 
       <div className="mt-8 pt-6 border-t border-white/5">
-        <div className="management-section">
+        <div id="onboard-management" className="management-section">
           <SectionTitle>Management</SectionTitle>
           {!user ? (
             <button 

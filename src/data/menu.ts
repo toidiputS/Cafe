@@ -13,6 +13,7 @@ export interface MenuItem {
   stockQuantity?: number;
   discountedPrice?: number;
   discountLabel?: string;
+  image?: string;
 }
 
 export const BUSINESS_INFO = {
